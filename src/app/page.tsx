@@ -1,16 +1,20 @@
+"use client"
+
 import AppShell from "@/components/app-shell";
 import ThemeToggle from "@/components/theme-toggle";
 import NavigationRail from "@/components/navigation-rail";
 import ConversationList from "@/components/conversation-list";
 import { MessageSquareText } from "lucide-react";
+import { useState } from "react";
 
 export default function Home() {
+  const [selectedConversationId, setSelectedConversationId] =  useState<string | null>(null);
   return (
 <AppShell>
        
 <main className="flex min-h-screen">
   <NavigationRail />
-  <ConversationList />
+  <ConversationList selectedConversationId={selectedConversationId} onSelectConversation={setSelectedConversationId} />
 
   <section className="flex min-w-0 flex-1 flex-col p-6">
     <header className="flex items-center justify-between">
