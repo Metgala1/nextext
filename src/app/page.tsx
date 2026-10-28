@@ -11,11 +11,13 @@ import ChatHeader from "@/components/chat-header";
 import MessageList from "@/components/message-list";
 import { getSampleMessages } from "@/data/messages";
 import MessageComposer from "@/components/message-composer";
+import ContactDetails from "@/components/contactDetails";
 
 export default function Home() {
   const [selectedConversationId, setSelectedConversationId] =  useState<string | null>(null);
   const selectedConversation = sampleConversations.find((chat) => chat.id === selectedConversationId)
   const messages = selectedConversation ? getSampleMessages(selectedConversation.id, selectedConversation.name) : []
+  const [isContactDetailsOpen, setIsContactDetailsOpen] = useState(false)
 
 
 
@@ -37,6 +39,7 @@ export default function Home() {
     <ChatHeader
       name={selectedConversation.name}
       initials={selectedConversation.initials}
+      onNameClick={() => setIsContactDetailsOpen(true)}
     />
 
     <MessageList messages={messages} />
@@ -64,6 +67,13 @@ export default function Home() {
       </div>
     )}
   </section>
+  {isContactDetailsOpen && selectedConversation && (
+  <ContactDetails
+    name={selectedConversation.name}
+    initials={selectedConversation.initials}
+    onClose={() => setIsContactDetailsOpen(false)}
+  />
+)}
 </main>
 </AppShell>
   );
