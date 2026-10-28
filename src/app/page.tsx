@@ -40,6 +40,8 @@ export default function Home() {
       name={selectedConversation.name}
       initials={selectedConversation.initials}
       onNameClick={() => setIsContactDetailsOpen(true)}
+      isOnline={selectedConversation.isOnline}
+      lastSeen={selectedConversation.lastSeen}
     />
 
     <MessageList messages={messages} />

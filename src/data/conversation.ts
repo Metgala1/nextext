@@ -1,4 +1,15 @@
-export const sampleConversations = [
+export interface Conversation {
+  id: string;
+  name: string;
+  initials: string;
+  lastMessage: string;
+  timestamp: string;
+  unread: boolean;
+  isOnline: boolean;
+  lastSeen: string | null; // null when the user is online
+}
+
+export const sampleConversations: Conversation[] = [
   {
     id: "conversation-1",
     name: "Alex Morgan",
@@ -6,6 +17,8 @@ export const sampleConversations = [
     lastMessage: "Are we still meeting tomorrow?",
     timestamp: "10:42",
     unread: true,
+    isOnline: true,
+    lastSeen: null,
   },
   {
     id: "conversation-2",
@@ -14,6 +27,8 @@ export const sampleConversations = [
     lastMessage: "I've sent you the document.",
     timestamp: "10:35",
     unread: false,
+    isOnline: false,
+    lastSeen: "last seen 12 minutes ago",
   },
   {
     id: "conversation-3",
@@ -22,6 +37,8 @@ export const sampleConversations = [
     lastMessage: "Thanks, talk to you later!",
     timestamp: "10:12",
     unread: false,
+    isOnline: false,
+    lastSeen: "last seen today at 10:15",
   },
   {
     id: "conversation-4",
@@ -30,6 +47,8 @@ export const sampleConversations = [
     lastMessage: "That sounds like a great plan.",
     timestamp: "09:58",
     unread: true,
+    isOnline: true,
+    lastSeen: null,
   },
   {
     id: "conversation-5",
@@ -38,6 +57,8 @@ export const sampleConversations = [
     lastMessage: "Can you review the latest version?",
     timestamp: "09:41",
     unread: false,
+    isOnline: false,
+    lastSeen: "last seen 1 hour ago",
   },
   {
     id: "conversation-6",
@@ -46,6 +67,8 @@ export const sampleConversations = [
     lastMessage: "I'll call you when I get home.",
     timestamp: "09:18",
     unread: true,
+    isOnline: true,
+    lastSeen: null,
   },
   {
     id: "conversation-7",
@@ -54,6 +77,8 @@ export const sampleConversations = [
     lastMessage: "Perfect, thank you!",
     timestamp: "09:02",
     unread: false,
+    isOnline: false,
+    lastSeen: "last seen today at 09:05",
   },
   {
     id: "conversation-8",
@@ -62,6 +87,8 @@ export const sampleConversations = [
     lastMessage: "Did you get a chance to look at it?",
     timestamp: "08:47",
     unread: false,
+    isOnline: false,
+    lastSeen: "last seen 2 hours ago",
   },
   {
     id: "conversation-9",
@@ -70,6 +97,8 @@ export const sampleConversations = [
     lastMessage: "Let's catch up this weekend.",
     timestamp: "08:26",
     unread: true,
+    isOnline: true,
+    lastSeen: null,
   },
   {
     id: "conversation-10",
@@ -78,6 +107,8 @@ export const sampleConversations = [
     lastMessage: "The meeting notes are in the shared folder.",
     timestamp: "08:10",
     unread: false,
+    isOnline: false,
+    lastSeen: "last seen today at 08:30",
   },
   {
     id: "conversation-11",
@@ -86,6 +117,8 @@ export const sampleConversations = [
     lastMessage: "I've added my feedback to the design.",
     timestamp: "Yesterday",
     unread: true,
+    isOnline: true,
+    lastSeen: null,
   },
   {
     id: "conversation-12",
@@ -94,6 +127,8 @@ export const sampleConversations = [
     lastMessage: "See you at the office on Monday.",
     timestamp: "Yesterday",
     unread: false,
+    isOnline: false,
+    lastSeen: "last seen yesterday at 22:14",
   },
   {
     id: "conversation-13",
@@ -102,6 +137,8 @@ export const sampleConversations = [
     lastMessage: "The files uploaded successfully.",
     timestamp: "Yesterday",
     unread: false,
+    isOnline: false,
+    lastSeen: "last seen 3 hours ago",
   },
   {
     id: "conversation-14",
@@ -110,6 +147,8 @@ export const sampleConversations = [
     lastMessage: "Could you send me the updated link?",
     timestamp: "Yesterday",
     unread: true,
+    isOnline: false,
+    lastSeen: "last seen yesterday at 18:47",
   },
   {
     id: "conversation-15",
@@ -118,6 +157,8 @@ export const sampleConversations = [
     lastMessage: "That made my day 😂",
     timestamp: "Tue",
     unread: false,
+    isOnline: true,
+    lastSeen: null,
   },
   {
     id: "conversation-16",
@@ -126,6 +167,8 @@ export const sampleConversations = [
     lastMessage: "Let me check and get back to you.",
     timestamp: "Tue",
     unread: false,
+    isOnline: false,
+    lastSeen: "last seen Tuesday at 16:20",
   },
   {
     id: "conversation-17",
@@ -134,6 +177,8 @@ export const sampleConversations = [
     lastMessage: "Are we still on for Saturday?",
     timestamp: "Tue",
     unread: true,
+    isOnline: false,
+    lastSeen: "last seen 45 minutes ago",
   },
   {
     id: "conversation-18",
@@ -142,6 +187,8 @@ export const sampleConversations = [
     lastMessage: "Thanks for explaining that so clearly.",
     timestamp: "Mon",
     unread: false,
+    isOnline: false,
+    lastSeen: "last seen Monday at 20:05",
   },
   {
     id: "conversation-19",
@@ -150,6 +197,8 @@ export const sampleConversations = [
     lastMessage: "I've shared the presentation with you.",
     timestamp: "Mon",
     unread: true,
+    isOnline: true,
+    lastSeen: null,
   },
   {
     id: "conversation-20",
@@ -158,5 +207,7 @@ export const sampleConversations = [
     lastMessage: "Let's discuss everything in more detail tomorrow.",
     timestamp: "Mon",
     unread: false,
+    isOnline: false,
+    lastSeen: "last seen Monday at 11:32",
   },
 ];
