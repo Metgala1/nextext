@@ -7,37 +7,43 @@ import ConversationList from "@/components/conversation-list";
 import { MessageSquareText } from "lucide-react";
 import { useState } from "react";
 import { sampleConversations } from "@/data/conversation";
+import ChatHeader from "@/components/chat-header";
+import MessageList from "@/components/message-list";
+import { getSampleMessages } from "@/data/messages";
+import MessageComposer from "@/components/message-composer";
 
 export default function Home() {
   const [selectedConversationId, setSelectedConversationId] =  useState<string | null>(null);
   const selectedConversation = sampleConversations.find((chat) => chat.id === selectedConversationId)
+  const messages = selectedConversation ? getSampleMessages(selectedConversation.id, selectedConversation.name) : []
+
+
+
   return (
 <AppShell>
        
-<main className="flex min-h-screen">
+<main className="flex h-screen overflow-hidden">
   <NavigationRail />
   <ConversationList selectedConversationId={selectedConversationId} onSelectConversation={setSelectedConversationId} />
 
-  <section className="flex min-w-0 flex-1 flex-col p-6">
+  <section className="flex h-screen min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-6">
     <header className="flex items-center justify-between">
       <h1 className="text-xl font-semibold">{selectedConversation?.name ?? "NexText"}</h1>
       <ThemeToggle />
     </header>
 
    {selectedConversation ? (
-  <div className="flex flex-1 items-center justify-center">
-    <div className="text-center">
-      <h2 className="text-lg font-semibold">
-        {selectedConversation.name}
-      </h2>
+    <div className="flex flex-1 flex-col overflow-hidden">
+    <ChatHeader
+      name={selectedConversation.name}
+      initials={selectedConversation.initials}
+    />
 
-      <p className="mt-2 text-sm text-text-secondary">
-        Your conversation will appear here.
-      </p>
+    <MessageList messages={messages} />
+    <MessageComposer />
     </div>
-  </div>
-) : (
-  <div className="flex flex-1 items-center justify-center">
+    ) : (
+    <div className="flex flex-1 items-center justify-center">
     <div className="max-w-sm text-center">
       <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-default bg-surface-elevated">
         <MessageSquareText
@@ -55,8 +61,8 @@ export default function Home() {
         Select a conversation to start chatting.
       </p>
     </div>
-  </div>
-)}
+      </div>
+    )}
   </section>
 </main>
 </AppShell>
