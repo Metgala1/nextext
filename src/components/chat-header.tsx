@@ -1,5 +1,7 @@
 
 "use client";
+import { useState } from "react";
+import ConversationMenu from "@/components/conversation-menu";
 
 import {
   Phone,
@@ -13,6 +15,14 @@ type ChatHeaderProps = {
   onNameClick: () => void;
   isOnline: boolean;
   lastSeen: string | null;
+  onSearch: () => void;
+  onToggleMute: () => void;
+  onClearConversation: () => void;
+  onBlockContact: () => void;
+  isMuted: boolean;
+  isBlocked: boolean;
+  onToggleBlock: () => void;
+  
 };
 
 export default function ChatHeader({
@@ -21,10 +31,19 @@ export default function ChatHeader({
   onNameClick,
   isOnline,
   lastSeen,
+  onSearch,
+  onToggleMute,
+  onClearConversation,
+  onBlockContact,
+  isMuted,
+  isBlocked,
+  onToggleBlock
+  
 }: ChatHeaderProps) {
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    
   return (
     <header className="flex h-[76px] shrink-0 items-center gap-3 border-b border-border px-6">
-      {/* Contact avatar */}
       <div
         className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-semibold text-accent"
         aria-hidden="true"
@@ -32,7 +51,6 @@ export default function ChatHeader({
         {initials}
       </div>
 
-      {/* Contact name and presence status */}
       <div className="min-w-0 flex-1">
         <button
           type="button"
@@ -79,14 +97,41 @@ export default function ChatHeader({
           <Video size={20} aria-hidden="true" />
         </button>
 
+        
+        <div className="relative">
         <button
-          type="button"
-          aria-label="More conversation options"
-          title="More options"
-          className="flex size-10 items-center justify-center rounded-default text-text-secondary transition-colors hover:bg-surface-elevated hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            type="button"
+            aria-label="More conversation options"
+            aria-haspopup="menu"
+            aria-expanded={isMenuOpen}
+            title="More options"
+            onClick={() => setIsMenuOpen((open) => !open)}
+            className="flex size-10 items-center justify-center rounded-default text-text-secondary transition-colors hover:bg-surface-elevated hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
-          <EllipsisVertical size={20} aria-hidden="true" />
+            <EllipsisVertical size={20} aria-hidden="true" />
         </button>
+
+                {isMenuOpen && (
+                    <ConversationMenu
+                    onViewDetails={() => {
+                        setIsMenuOpen(false);
+                        onNameClick();
+                    }}
+                    onSearch={() => {
+                        setIsMenuOpen(false);
+                        onSearch();
+                    }}
+                    onToggleMute={onToggleMute}
+                    onClearConversation={onClearConversation}
+                    onBlockContact={onBlockContact}
+                    isMuted={isMuted}
+                    isBlocked={isBlocked}
+                    onToggleBlock={onToggleBlock}
+
+                    />
+                )}
+        </div>
+
       </div>
     </header>
   );

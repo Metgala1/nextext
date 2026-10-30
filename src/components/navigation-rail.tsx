@@ -27,7 +27,7 @@ export default function NavigationRail() {
     <aside className="flex h-full min-h-screen w-60 shrink-0 flex-col border-r border-border bg-surface p-4">
       <div className="mb-8 flex h-10 items-center gap-3 px-2">
         <div className="flex size-9 items-center justify-center rounded-default bg-accent text-sm font-bold text-white">
-          N
+          NT
         </div>
 
         <span className="text-lg font-semibold tracking-tight">
@@ -36,7 +36,7 @@ export default function NavigationRail() {
       </div>
 
       <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-wider text-text-secondary">
-        Workspace
+        Next actions
       </p>
 
       <nav aria-label="Main navigation" className="flex flex-col gap-1">
@@ -64,7 +64,7 @@ export default function NavigationRail() {
 
       <div className="mt-auto border-t border-border pt-4">
         <div className="rounded-default bg-surface-elevated p-3">
-          <p className="text-sm font-medium">Your workspace</p>
+          <p className="text-sm font-medium">Connected as Roger</p>
           <p className="mt-1 text-xs text-text-secondary">
             Stay connected.
           </p>

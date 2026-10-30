@@ -30,11 +30,11 @@ export default function ConversationItem({
           ? "bg-surface-elevated"
           : "hover:bg-surface-elevated/70"
       }`}
-    >
+     >
       <div
         className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-semibold text-accent"
         aria-hidden="true"
-      >
+       >
         {initials}
       </div>
 
