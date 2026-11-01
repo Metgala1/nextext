@@ -5,8 +5,29 @@ import {
   Smile,
   Mic,
 } from "lucide-react";
+import { useState } from "react";
 
-export default function MessageComposer() {
+type MessageComposerProps = {
+  onSend: (text: string) => void;
+  disabled?: boolean;
+};
+
+export default function MessageComposer(
+ {
+  onSend,
+  disabled = false,
+}: MessageComposerProps
+) {
+  const [draft, setDraft] = useState("");
+
+  function handleSend() {
+    const trimmedText = draft.trim()
+    if(!trimmedText || disabled) return
+
+    onSend(trimmedText)
+    setDraft("")
+  }
+  
   return (
     <form
       className="flex shrink-0 items-end gap-2 border-t border-border p-3"
@@ -46,6 +67,15 @@ export default function MessageComposer() {
       type="text"
       placeholder="Write a message..."
       className="w-full min-w-0 bg-transparent py-3 text-sm text-foreground outline-none placeholder:text-text-secondary"
+      value={draft}
+      onChange={(event) => setDraft(event.target.value)}
+      disabled={disabled}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          handleSend();
+        }
+      }}
     />
   </label>
 
@@ -62,6 +92,7 @@ export default function MessageComposer() {
   type="submit"
   aria-label="Send message"
   className="flex size-12 shrink-0 items-center justify-center rounded-default bg-accent text-white transition-opacity hover:opacity-90"
+  onClick={handleSend}
 >
   <Send size={18} aria-hidden="true" />
 </button>

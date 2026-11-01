@@ -9,11 +9,11 @@ import { useState } from "react";
 import { sampleConversations } from "@/data/conversation";
 import ChatHeader from "@/components/chat-header";
 import MessageList from "@/components/message-list";
-import { getSampleMessages } from "@/data/messages";
 import MessageComposer from "@/components/message-composer";
 import ContactDetails from "@/components/contactDetails";
 import ConfirmationModal from "@/components/confirmation-modal";
 import MessageSearch from "@/components/message-search";
+import { getSampleMessages, type Message } from "@/data/messages";
 
 type ConfirmationAction = "clear" | "block" | "unblock";
 
@@ -32,12 +32,15 @@ export default function Home() {
   useState<ConfirmationAction | null>(null);
   const [currentSearchResultIndex, setCurrentSearchResultIndex] =
   useState(0);
+  const [conversationMessages, setConversationMessages] =
+  useState<Record<string, Message[]>>({});
   
 
   const messages =
   selectedConversation &&
   !clearedConversationIds.includes(selectedConversation.id)
-    ? getSampleMessages(
+    ? conversationMessages[selectedConversation.id] ??
+      getSampleMessages(
         selectedConversation.id,
         selectedConversation.name,
       )
@@ -156,6 +159,36 @@ function handleConfirmAction() {
   setConfirmationAction(null);
 }
 
+function handleSendMessage(text: string) {
+  if (!selectedConversation) return;
+
+  const conversationId = selectedConversation.id;
+
+  const newMessage: Message = {
+    id: crypto.randomUUID(),
+    text,
+    sender: "me",
+    timestamp: new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+  };
+
+  setConversationMessages((previousMessages) => {
+    const existingMessages =
+      previousMessages[conversationId] ??
+      getSampleMessages(
+        conversationId,
+        selectedConversation.name,
+      );
+
+    return {
+      ...previousMessages,
+      [conversationId]: [...existingMessages, newMessage],
+    };
+  });
+}
+
 
   return (
 <AppShell>
@@ -259,7 +292,10 @@ function handleConfirmAction() {
           matchingMessages[currentSearchResultIndex]?.id ?? null
         }
       />
-          <MessageComposer />
+          <MessageComposer 
+          onSend={handleSendMessage}
+          disabled={!selectedConversation}
+          />
           </div>
         ) : (
           <div className="flex flex-1 items-center justify-center">

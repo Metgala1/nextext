@@ -6,6 +6,7 @@ import {
   MessageSquare,
   Users,
   Settings,
+  UserGroup,
   type LucideIcon,
 } from "lucide-react";
 
@@ -18,6 +19,8 @@ const navigationItems: NavigationItem[] = [
   { label: "Messages", icon: MessageSquare },
   { label: "Contacts", icon: Users },
   { label: "Settings", icon: Settings },
+  { label: "Group", icon: UserGroup },
+   { label: "Status", icon: UserGroup },
 ];
 
 export default function NavigationRail() {

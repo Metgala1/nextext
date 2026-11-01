@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect , useRef} from "react";
 
 type Message = {
   id: string;
@@ -46,6 +46,15 @@ export default function MessageList({
   searchQuery = "",
   activeSearchMessageId = null,
 }: MessageListProps) {
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
+  }, [messages.length]);
+
+
   useEffect(() => {
     if (!activeSearchMessageId) return;
 
@@ -92,6 +101,7 @@ export default function MessageList({
           </div>
         );
       })}
+      <div ref={bottomRef} />
     </div>
   );
 }
