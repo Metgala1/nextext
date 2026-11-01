@@ -1,6 +1,6 @@
 
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ConversationMenu from "@/components/conversation-menu";
 
 import {
@@ -41,6 +41,34 @@ export default function ChatHeader({
   
 }: ChatHeaderProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      if (!isMenuOpen) return;
+
+      function handlePointerDown(event: PointerEvent) {
+        if (
+          menuRef.current &&
+          !menuRef.current.contains(event.target as Node)
+        ) {
+          setIsMenuOpen(false);
+        }
+      }
+
+      function handleKeyDown(event: KeyboardEvent) {
+        if (event.key === "Escape") {
+          setIsMenuOpen(false);
+        }
+      }
+
+      document.addEventListener("pointerdown", handlePointerDown);
+      document.addEventListener("keydown", handleKeyDown);
+
+      return () => {
+        document.removeEventListener("pointerdown", handlePointerDown);
+        document.removeEventListener("keydown", handleKeyDown);
+      };
+}, [isMenuOpen]);
     
   return (
     <header className="flex h-[76px] shrink-0 items-center gap-3 border-b border-border px-6">
@@ -98,7 +126,7 @@ export default function ChatHeader({
         </button>
 
         
-        <div className="relative">
+        <div ref={menuRef} className="relative">
         <button
             type="button"
             aria-label="More conversation options"

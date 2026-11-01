@@ -1,4 +1,4 @@
-import MessageComposer from "./message-composer";
+import { useEffect } from "react";
 
 type Message = {
   id: string;
@@ -9,25 +9,66 @@ type Message = {
 
 type MessageListProps = {
   messages: Message[];
+  searchQuery?: string;
+  activeSearchMessageId?: string | null;
 };
+
+function highlightText(text: string, query: string, isActive: boolean) {
+  const trimmedQuery = query.trim();
+
+  if (!trimmedQuery) return text;
+
+  const escapedQuery = trimmedQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  // Splitting on a capture group puts every match at an odd index.
+  const parts = text.split(new RegExp(`(${escapedQuery})`, "gi"));
+
+  return parts.map((part, index) => {
+    const isMatch = index % 2 === 1;
+
+    if (!isMatch) return part;
+
+    return (
+      <mark
+        key={index}
+        className={`rounded-sm bg-accent/25 text-foreground ${
+          isActive ? "ring-2 ring-accent/70" : ""
+        }`}
+      >
+        {part}
+      </mark>
+    );
+  });
+}
 
 export default function MessageList({
   messages,
+  searchQuery = "",
+  activeSearchMessageId = null,
 }: MessageListProps) {
+  useEffect(() => {
+    if (!activeSearchMessageId) return;
+
+    document
+      .getElementById(`message-${activeSearchMessageId}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [activeSearchMessageId]);
+
   return (
     <div
+      role="log"
       aria-label="Messages"
       className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6"
     >
       {messages.map((message) => {
         const isMine = message.sender === "me";
+        const isActive = activeSearchMessageId === message.id;
 
         return (
           <div
+            id={`message-${message.id}`}
             key={message.id}
-            className={`flex ${
-              isMine ? "justify-end" : "justify-start"
-            }`}
+            className={`flex ${isMine ? "justify-end" : "justify-start"}`}
           >
             <div
               className={`max-w-[75%] rounded-default px-4 py-3 ${
@@ -37,7 +78,7 @@ export default function MessageList({
               }`}
             >
               <p className="whitespace-pre-wrap break-words text-sm leading-6">
-                {message.text}
+                {highlightText(message.text, searchQuery, isActive)}
               </p>
 
               <p

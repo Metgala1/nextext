@@ -12,6 +12,10 @@ import MessageList from "@/components/message-list";
 import { getSampleMessages } from "@/data/messages";
 import MessageComposer from "@/components/message-composer";
 import ContactDetails from "@/components/contactDetails";
+import ConfirmationModal from "@/components/confirmation-modal";
+import MessageSearch from "@/components/message-search";
+
+type ConfirmationAction = "clear" | "block" | "unblock";
 
 export default function Home() {
   const [selectedConversationId, setSelectedConversationId] =  useState<string | null>(null);
@@ -24,6 +28,12 @@ export default function Home() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const [confirmationAction, setConfirmationAction] =
+  useState<ConfirmationAction | null>(null);
+  const [currentSearchResultIndex, setCurrentSearchResultIndex] =
+  useState(0);
+  
+
   const messages =
   selectedConversation &&
   !clearedConversationIds.includes(selectedConversation.id)
@@ -32,6 +42,35 @@ export default function Home() {
         selectedConversation.name,
       )
     : [];
+  
+  const matchingMessages = messages.filter((message) =>
+  message.text
+    .toLowerCase()
+    .includes(searchQuery.trim().toLowerCase()),
+  );
+
+function handleSearchQueryChange(value: string) {
+  setSearchQuery(value);
+  setCurrentSearchResultIndex(0);
+}
+
+function handleNextSearchResult() {
+  if (matchingMessages.length === 0) return;
+
+  setCurrentSearchResultIndex((current) =>
+    (current + 1) % matchingMessages.length,
+  );
+}
+
+function handlePreviousSearchResult() {
+  if (matchingMessages.length === 0) return;
+
+  setCurrentSearchResultIndex((current) =>
+    current === 0
+      ? matchingMessages.length - 1
+      : current - 1,
+  );
+}
 
   const filteredMessages = messages.filter((message) =>
     message.text
@@ -52,22 +91,7 @@ export default function Home() {
   }
 
   function clearConversation() {
-    if(!selectedConversation){
-      return
-    }
-
-    const confirmed = window.confirm(
-      `Clear the conversation with ${selectedConversation.name}`
-    )
-
-    if(!confirmed) {
-      return
-    }
-
-    setClearedConversationIds((current) => 
-    current.includes(selectedConversation.id) ? current
-    : [...current , selectedConversation.id]
-    )
+    setConfirmationAction("clear");
   }
 
   function blockContact() {
@@ -91,46 +115,79 @@ export default function Home() {
 
   }
 
-  function toggleBlockContact() {
-  if (!selectedConversation) return;
+function toggleBlockContact() {
+    if (!selectedConversation) return;
+
+    const isCurrentlyBlocked =
+      blockedConversationIds.includes(selectedConversation.id);
+
+    setConfirmationAction(
+      isCurrentlyBlocked ? "unblock" : "block",
+    );
+}
+
+function handleConfirmAction() {
+  if (!selectedConversation || !confirmationAction) return;
 
   const conversationId = selectedConversation.id;
-  const isCurrentlyBlocked =
-    blockedConversationIds.includes(conversationId);
 
-  if (isCurrentlyBlocked) {
-    const confirmed = window.confirm(
-      `Unblock ${selectedConversation.name}?`,
+  if (confirmationAction === "clear") {
+    setClearedConversationIds((current) =>
+      current.includes(conversationId)
+        ? current
+        : [...current, conversationId],
     );
+  }
 
-    if (!confirmed) return;
+  if (confirmationAction === "block") {
+    setBlockedConversationIds((current) =>
+      current.includes(conversationId)
+        ? current
+        : [...current, conversationId],
+    );
+  }
 
+  if (confirmationAction === "unblock") {
     setBlockedConversationIds((current) =>
       current.filter((id) => id !== conversationId),
     );
-
-    return;
   }
 
-  const confirmed = window.confirm(
-    `Block ${selectedConversation.name}? This is a UI demonstration and will not block them on a server.`,
-  );
-
-  if (!confirmed) return;
-
-  setBlockedConversationIds((current) =>
-    current.includes(conversationId)
-      ? current
-      : [...current, conversationId],
-  );
- }
-
+  setConfirmationAction(null);
+}
 
 
   return (
 <AppShell>
        
 <main className="flex h-screen overflow-hidden">
+  <ConfirmationModal
+    isOpen={confirmationAction !== null}
+    title={
+      confirmationAction === "clear"
+        ? "Clear conversation?"
+        : confirmationAction === "block"
+          ? "Block contact?"
+          : "Unblock contact?"
+    }
+    description={
+      confirmationAction === "clear"
+        ? `This will remove the displayed messages with ${selectedConversation?.name}. This demo action does not permanently delete server data.`
+        : confirmationAction === "block"
+          ? `Are you sure you want to block ${selectedConversation?.name}? This is currently a frontend demonstration.`
+          : `Are you sure you want to unblock ${selectedConversation?.name}?`
+    }
+    confirmLabel={
+      confirmationAction === "clear"
+        ? "Clear conversation"
+        : confirmationAction === "block"
+          ? "Block contact"
+          : "Unblock contact"
+    }
+    destructive={confirmationAction !== "unblock"}
+    onConfirm={handleConfirmAction}
+    onCancel={() => setConfirmationAction(null)}
+/>
     <NavigationRail />
     <ConversationList selectedConversationId={selectedConversationId} onSelectConversation={setSelectedConversationId} />
 
@@ -176,42 +233,31 @@ export default function Home() {
         )}
 
         {isSearchOpen && (
-          <div className="shrink-0 border-b border-border p-3">
-            <label className="block">
-              <span className="sr-only">Search conversation messages</span>
-              <input
-                autoFocus
-                type="search"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search messages..."
-                className="w-full rounded-default border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
-              />
-            </label>
-
-            <button
-              type="button"
-              onClick={() => {
-                setIsSearchOpen(false);
-                setSearchQuery("");
-              }}
-              className="mt-2 text-sm text-text-secondary hover:text-foreground"
-            >
-              Close search
-            </button>
-
-            {searchQuery.trim() && (
-              <p className="mt-2 text-xs text-text-secondary">
-                {filteredMessages.length} matching message(s)
-              </p>
-            )}
-          </div>
+          <MessageSearch
+            query={searchQuery}
+            onQueryChange={handleSearchQueryChange}
+            resultCount={matchingMessages.length}
+            currentResult={
+              matchingMessages.length > 0
+                ? currentSearchResultIndex + 1
+                : 0
+            }
+            onPrevious={handlePreviousSearchResult}
+            onNext={handleNextSearchResult}
+            onClose={() => {
+              setIsSearchOpen(false);
+              setSearchQuery("");
+              setCurrentSearchResultIndex(0);
+            }}
+          />
         )}
 
       <MessageList
-        messages={isSearchOpen && searchQuery.trim()
-          ? filteredMessages
-          : messages}
+        messages={messages}
+        searchQuery={searchQuery}
+        activeSearchMessageId={
+          matchingMessages[currentSearchResultIndex]?.id ?? null
+        }
       />
           <MessageComposer />
           </div>
