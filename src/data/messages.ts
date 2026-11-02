@@ -9,6 +9,10 @@ export type Message = {
   sender: "me" | "them";
   timestamp: string;
   status?: MessageStatus;
+
+  replyTo?: string;
+  replyToText?: string;
+  replyToSender?: "me" | "them";
 };
 
 export function getSampleMessages(

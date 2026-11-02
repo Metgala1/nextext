@@ -1,26 +1,17 @@
-import { useEffect , useRef} from "react";
-import { Check, CheckCheck } from "lucide-react";
-import type { MessageStatus } from "@/data/messages";
-
-type Message = {
-  id: string;
-  text: string;
-  sender: "me" | "them";
-  timestamp: string;
-  status: MessageStatus
-};
+import { useEffect, useRef, useState } from "react";
+import { Check, CheckCheck, MoreVertical } from "lucide-react";
+import type { Message, MessageStatus } from "@/data/messages";
+import MessageActionsMenu from "./message-actions";
+import type { MessageAction } from "./message-actions";
 
 type MessageListProps = {
   messages: Message[];
   searchQuery?: string;
   activeSearchMessageId?: string | null;
+  onReply: (message: Message) => void;
 };
 
-function MessageStatusIndicator({
-  status,
-}: {
-  status?: MessageStatus;
-}) {
+function MessageStatusIndicator({ status }: { status?: MessageStatus }) {
   if (!status) return null;
 
   if (status === "sent") {
@@ -78,15 +69,55 @@ export default function MessageList({
   messages,
   searchQuery = "",
   activeSearchMessageId = null,
+  onReply,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [openMessageMenuId, setOpenMessageMenuId] = useState<string | null>(
+    null,
+  );
+
+  function handleMessageAction(message: Message, action: MessageAction) {
+    setOpenMessageMenuId(null);
+
+    if (action === "reply") {
+      onReply(message);
+    }
+  }
+  
+  useEffect(() => {
+  if (!openMessageMenuId) return;
+
+  function handlePointerDown(event: PointerEvent) {
+    const target = event.target;
+
+    if (
+      target instanceof Element &&
+      !target.closest("[data-message-menu-root]")
+    ) {
+      setOpenMessageMenuId(null);
+    }
+  }
+
+  function handleKeyDown(event: KeyboardEvent) {
+    if (event.key === "Escape") {
+      setOpenMessageMenuId(null);
+    }
+  }
+
+  document.addEventListener("pointerdown", handlePointerDown);
+  document.addEventListener("keydown", handleKeyDown);
+
+  return () => {
+    document.removeEventListener("pointerdown", handlePointerDown);
+    document.removeEventListener("keydown", handleKeyDown);
+  };
+}, [openMessageMenuId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({
       behavior: "smooth",
     });
   }, [messages.length]);
-
 
   useEffect(() => {
     if (!activeSearchMessageId) return;
@@ -105,13 +136,48 @@ export default function MessageList({
       {messages.map((message) => {
         const isMine = message.sender === "me";
         const isActive = activeSearchMessageId === message.id;
+        const isMenuOpen = openMessageMenuId === message.id;
+
+        const optionsControl = (
+          <div className="relative self-center">
+            <button
+              type="button"
+              aria-label="Message options"
+              aria-expanded={isMenuOpen}
+              onClick={() =>
+                setOpenMessageMenuId((current) =>
+                  current === message.id ? null : message.id,
+                )
+              }
+              className={`self-center rounded-md p-1.5 text-text-secondary transition-opacity hover:bg-surface-elevated hover:text-foreground focus:opacity-100 group-hover:opacity-100 ${
+                isMenuOpen ? "opacity-100" : "opacity-0"
+              }`}
+            >
+              <MoreVertical size={18} />
+            </button>
+
+            {isMenuOpen && (
+              <MessageActionsMenu
+                onAction={(action: MessageAction) =>
+                  handleMessageAction(message, action)
+                }
+              />
+            )}
+          </div>
+        );
 
         return (
           <div
             id={`message-${message.id}`}
             key={message.id}
-            className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+            data-message-menu-root
+            className={`group relative flex gap-1 ${
+              isMine ? "justify-end" : "justify-start"
+            }`}
           >
+            {/* My messages: options on the left of the bubble */}
+            {isMine && optionsControl}
+
             <div
               className={`max-w-[75%] rounded-default px-4 py-3 ${
                 isMine
@@ -132,11 +198,11 @@ export default function MessageList({
                   {message.timestamp}
                 </span>
 
-                {isMine && (
-                  <MessageStatusIndicator status={message.status} />
-                )}
+                {isMine && <MessageStatusIndicator status={message.status} />}
               </div>
             </div>
+
+            {!isMine && optionsControl}
           </div>
         );
       })}

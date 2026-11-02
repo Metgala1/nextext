@@ -13,7 +13,11 @@ import MessageComposer from "@/components/message-composer";
 import ContactDetails from "@/components/contactDetails";
 import ConfirmationModal from "@/components/confirmation-modal";
 import MessageSearch from "@/components/message-search";
-import { getSampleMessages, type Message } from "@/data/messages";
+import {
+  getSampleMessages,
+  type Message,
+  type MessageStatus,
+} from "@/data/messages";
 
 type ConfirmationAction = "clear" | "block" | "unblock";
 
@@ -22,6 +26,8 @@ export default function Home() {
   const [selectedConversationId, setSelectedConversationId] =  useState<string | null>(null);
   const selectedConversation = conversations.find((chat) => chat.id === selectedConversationId)
   const [isContactDetailsOpen, setIsContactDetailsOpen] = useState(false)
+  const [replyingToMessage, setReplyingToMessage] =
+  useState<Message | null>(null);
 
   const [mutedConversationIds, setMutedConversationIds] = useState<string[]>([]);
   const [clearedConversationIds, setClearedConversationIds] = useState<string[]>([]);
@@ -80,11 +86,14 @@ function handlePreviousSearchResult() {
   );
 }
 
-  const filteredMessages = messages.filter((message) =>
+const filteredMessages = messages.filter((message) =>
     message.text
       .toLowerCase()
       .includes(searchQuery.trim().toLowerCase()),
    );
+function handleReplyToMessage(message: Message) {
+  setReplyingToMessage(message);
+}
 
   function toggleMuteConversation() {
     if(!selectedConversation) {
@@ -214,9 +223,51 @@ function handleSendMessage(text: string) {
 });
 }
 
+function updateMessageStatus(
+  messageId: string,
+  status: MessageStatus,
+) {
+  if (!selectedConversation) return;
+
+  const conversationId = selectedConversation.id;
+
+  setConversationMessages((previousMessages) => {
+    const existingMessages =
+      previousMessages[conversationId] ??
+      getSampleMessages(
+        conversationId,
+        selectedConversation.name,
+      );
+
+    return {
+      ...previousMessages,
+      [conversationId]: existingMessages.map((message) =>
+        message.id === messageId && message.sender === "me"
+          ? { ...message, status }
+          : message,
+      ),
+    };
+  });
+}
+
+function getLatestOutgoingMessage() {
+  if (!selectedConversation) return null;
+
+  const currentMessages =
+    conversationMessages[selectedConversation.id] ??
+    getSampleMessages(
+      selectedConversation.id,
+      selectedConversation.name,
+    );
+
+  return [...currentMessages]
+    .reverse()
+    .find((message) => message.sender === "me") ?? null;
+}
+
 function handleSelectConversation(conversationId: string) {
   setSelectedConversationId(conversationId);
-
+  setReplyingToMessage(null);
   setConversations((previousConversations) =>
     previousConversations.map((conversation) =>
       conversation.id === conversationId
@@ -226,7 +277,7 @@ function handleSelectConversation(conversationId: string) {
   );
 }
 
-
+const latestOutgoingMessage = getLatestOutgoingMessage();
 
 
 return (
@@ -328,13 +379,50 @@ return (
           />
         )}
 
-      <MessageList
-        messages={messages}
-        searchQuery={searchQuery}
-        activeSearchMessageId={
-          matchingMessages[currentSearchResultIndex]?.id ?? null
-        }
-      />
+        <MessageList
+          messages={messages}
+          searchQuery={searchQuery}
+          activeSearchMessageId={
+            matchingMessages[currentSearchResultIndex]?.id ?? null
+          }
+        />
+
+        {process.env.NODE_ENV === "development" &&
+          latestOutgoingMessage && (
+            <div className="flex items-center gap-2 border-t border-border px-4 py-2">
+              <span className="text-xs text-text-secondary">
+                Receipt simulator
+              </span>
+
+              <button
+                type="button"
+                disabled={latestOutgoingMessage.status !== "sent"}
+                onClick={() =>
+                  updateMessageStatus(
+                    latestOutgoingMessage.id,
+                    "delivered",
+                  )
+                }
+                className="text-xs text-accent disabled:opacity-40"
+              >
+                Mark delivered
+              </button>
+
+              <button
+                type="button"
+                disabled={latestOutgoingMessage.status !== "delivered"}
+                onClick={() =>
+                  updateMessageStatus(
+                    latestOutgoingMessage.id,
+                    "read",
+                  )
+                }
+                className="text-xs text-accent disabled:opacity-40"
+              >
+                Mark read
+              </button>
+            </div>
+          )}
           <MessageComposer 
           onSend={handleSendMessage}
           disabled={!selectedConversation}
