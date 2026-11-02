@@ -18,8 +18,9 @@ import { getSampleMessages, type Message } from "@/data/messages";
 type ConfirmationAction = "clear" | "block" | "unblock";
 
 export default function Home() {
+  const [conversations, setConversations] = useState(sampleConversations);
   const [selectedConversationId, setSelectedConversationId] =  useState<string | null>(null);
-  const selectedConversation = sampleConversations.find((chat) => chat.id === selectedConversationId)
+  const selectedConversation = conversations.find((chat) => chat.id === selectedConversationId)
   const [isContactDetailsOpen, setIsContactDetailsOpen] = useState(false)
 
   const [mutedConversationIds, setMutedConversationIds] = useState<string[]>([]);
@@ -187,10 +188,43 @@ function handleSendMessage(text: string) {
       [conversationId]: [...existingMessages, newMessage],
     };
   });
+
+  setConversations((previousConversations) => {
+  const updatedConversations = previousConversations.map(
+    (conversation) =>
+      conversation.id === conversationId
+        ? {
+            ...conversation,
+            lastMessage: text,
+            timestamp: newMessage.timestamp,
+          }
+        : conversation,
+  );
+
+  return updatedConversations.sort((a, b) => {
+    if (a.id === conversationId) return -1;
+    if (b.id === conversationId) return 1;
+    return 0;
+  });
+});
+}
+
+function handleSelectConversation(conversationId: string) {
+  setSelectedConversationId(conversationId);
+
+  setConversations((previousConversations) =>
+    previousConversations.map((conversation) =>
+      conversation.id === conversationId
+        ? { ...conversation, unread: false }
+        : conversation,
+    ),
+  );
 }
 
 
-  return (
+
+
+return (
 <AppShell>
        
 <main className="flex h-screen overflow-hidden">
@@ -222,7 +256,11 @@ function handleSendMessage(text: string) {
     onCancel={() => setConfirmationAction(null)}
 />
     <NavigationRail />
-    <ConversationList selectedConversationId={selectedConversationId} onSelectConversation={setSelectedConversationId} />
+    <ConversationList 
+      selectedConversationId={selectedConversationId} 
+      onSelectConversation={handleSelectConversation}
+      conversations={conversations}
+      />
 
     <section className="flex h-screen min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-6">
       <header className="flex items-center justify-between">

@@ -2,21 +2,20 @@
 import ConversationItem from "@/components/conversation-item";
 
 import { Search, SquarePen } from "lucide-react";
-import { sampleConversations } from "@/data/conversation";
+import type { Conversation } from "@/data/conversation";
 
 type ConversationListProps = {
   selectedConversationId: string | null;
   onSelectConversation: (conversationId: string) => void;
+  conversations: Conversation[];
 };
-
-
-
 
 
 export default function ConversationList(
     {
       selectedConversationId,
-      onSelectConversation,  
+      onSelectConversation, 
+      conversations 
     }: ConversationListProps
 ) {
   return (
@@ -56,7 +55,7 @@ export default function ConversationList(
       </header>
 
      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
-        {sampleConversations.map((conversation) => (
+        {conversations.map((conversation) => (
             <ConversationItem
                 key={conversation.id}
                 name={conversation.name}
