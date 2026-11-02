@@ -186,8 +186,15 @@ function handleSendMessage(text: string) {
       hour: "2-digit",
       minute: "2-digit",
     }),
-    status: "sent"
+    status: "sent",
+    ...(replyingToMessage ? {
+      replyTo: replyingToMessage.id,
+      replyToText: replyingToMessage.text,
+      replyToSender: replyingToMessage.sender,
+    } : {})
   };
+
+  setReplyingToMessage(null);
 
   setConversationMessages((previousMessages) => {
     const existingMessages =
@@ -380,11 +387,13 @@ return (
         )}
 
         <MessageList
+          contactName={selectedConversation.name ?? ""}
           messages={messages}
           searchQuery={searchQuery}
           activeSearchMessageId={
             matchingMessages[currentSearchResultIndex]?.id ?? null
           }
+          onReply={handleReplyToMessage}
         />
 
         {process.env.NODE_ENV === "development" &&
@@ -423,9 +432,12 @@ return (
               </button>
             </div>
           )}
-          <MessageComposer 
-          onSend={handleSendMessage}
-          disabled={!selectedConversation}
+         <MessageComposer
+            contactName={selectedConversation.name ?? ""}
+            onSend={handleSendMessage}
+            disabled={!selectedConversation}
+            replyingTo={replyingToMessage}
+            onCancelReply={() => setReplyingToMessage(null)}
           />
           </div>
         ) : (

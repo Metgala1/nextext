@@ -9,6 +9,7 @@ type MessageListProps = {
   searchQuery?: string;
   activeSearchMessageId?: string | null;
   onReply: (message: Message) => void;
+  contactName: string;
 };
 
 function MessageStatusIndicator({ status }: { status?: MessageStatus }) {
@@ -70,19 +71,57 @@ export default function MessageList({
   searchQuery = "",
   activeSearchMessageId = null,
   onReply,
+  contactName
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [openMessageMenuId, setOpenMessageMenuId] = useState<string | null>(
     null,
   );
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+  null,
+  );
 
-  function handleMessageAction(message: Message, action: MessageAction) {
-    setOpenMessageMenuId(null);
+function handleMessageContextMenu(
+  event: React.MouseEvent<HTMLDivElement>,
+  messageId: string,
+) {
+  event.preventDefault();
+  setOpenMessageMenuId(messageId);
+}
 
-    if (action === "reply") {
-      onReply(message);
+function handleTouchStart(messageId: string) {
+  longPressTimerRef.current = setTimeout(() => {
+    setOpenMessageMenuId(messageId);
+    longPressTimerRef.current = null;
+  }, 500);
+}
+
+function handleTouchEnd() {
+  if (longPressTimerRef.current) {
+    clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = null;
+  }
+}
+
+async function handleMessageAction(
+  message: Message,
+  action: MessageAction,
+) {
+  setOpenMessageMenuId(null);
+
+  if (action === "reply") {
+    onReply(message);
+    return;
+  }
+
+  if (action === "copy") {
+    try {
+      await navigator.clipboard.writeText(message.text);
+    } catch (error) {
+      console.error("Failed to copy message:", error);
     }
   }
+}
   
   useEffect(() => {
   if (!openMessageMenuId) return;
@@ -126,6 +165,14 @@ export default function MessageList({
       .getElementById(`message-${activeSearchMessageId}`)
       ?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [activeSearchMessageId]);
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div
@@ -171,6 +218,13 @@ export default function MessageList({
             id={`message-${message.id}`}
             key={message.id}
             data-message-menu-root
+            onContextMenu={(event) =>
+              handleMessageContextMenu(event, message.id)
+            }
+            onTouchStart={() => handleTouchStart(message.id)}
+            onTouchEnd={handleTouchEnd}
+            onTouchMove={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
             className={`group relative flex gap-1 ${
               isMine ? "justify-end" : "justify-start"
             }`}
@@ -185,6 +239,19 @@ export default function MessageList({
                   : "bg-surface-elevated text-foreground"
               }`}
             >
+              {message.replyTo && (
+                <div className="mb-2 rounded-md border-l-2 border-accent bg-black/10 px-3 py-2">
+                  <p className="mb-1 text-xs font-semibold text-accent">
+                    {message.replyToSender === "me"
+                      ? "You"
+                      : contactName}
+                  </p>
+
+                  <p className="line-clamp-2 break-words text-xs text-current/75">
+                    {message.replyToText}
+                  </p>
+                </div>
+              )}
               <p className="whitespace-pre-wrap break-words text-sm leading-6">
                 {highlightText(message.text, searchQuery, isActive)}
               </p>
