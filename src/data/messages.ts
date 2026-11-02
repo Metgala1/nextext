@@ -1,8 +1,14 @@
+export type MessageStatus =
+  | "sent"
+  | "delivered"
+  | "read";
+
 export type Message = {
   id: string;
   text: string;
   sender: "me" | "them";
   timestamp: string;
+  status?: MessageStatus;
 };
 
 export function getSampleMessages(
@@ -22,10 +28,15 @@ export function getSampleMessages(
     "Will do. Thanks for checking in.",
   ];
 
-  return Array.from({ length: 40 }, (_, index) => ({
-    id: `${conversationId}-message-${index + 1}`,
-    text: messageTexts[index % messageTexts.length],
-    sender: index % 3 === 0 ? "them" : "me",
-    timestamp: `10:${String(index % 60).padStart(2, "0")}`,
-  }));
+  return Array.from({ length: 40 }, (_, index): Message => {
+    const sender = index % 3 === 0 ? "them" : "me";
+
+    return {
+      id: `${conversationId}-message-${index + 1}`,
+      text: messageTexts[index % messageTexts.length],
+      sender,
+      timestamp: `10:${String(index % 60).padStart(2, "0")}`,
+      status: sender === "me" ? "read" : undefined,
+    };
+  });
 }

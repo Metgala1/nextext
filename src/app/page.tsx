@@ -35,18 +35,22 @@ export default function Home() {
   useState(0);
   const [conversationMessages, setConversationMessages] =
   useState<Record<string, Message[]>>({});
-  
 
   const messages =
-  selectedConversation &&
-  !clearedConversationIds.includes(selectedConversation.id)
-    ? conversationMessages[selectedConversation.id] ??
-      getSampleMessages(
-        selectedConversation.id,
-        selectedConversation.name,
-      )
-    : [];
-  
+    selectedConversation &&
+    !clearedConversationIds.includes(selectedConversation.id)
+      ? (
+          conversationMessages[selectedConversation.id] ??
+          getSampleMessages(
+            selectedConversation.id,
+            selectedConversation.name,
+          )
+        ).map((message) => ({
+          ...message,
+          status: message.status ?? "sent",
+        }))
+      : [];
+
   const matchingMessages = messages.filter((message) =>
   message.text
     .toLowerCase()
@@ -173,6 +177,7 @@ function handleSendMessage(text: string) {
       hour: "2-digit",
       minute: "2-digit",
     }),
+    status: "sent"
   };
 
   setConversationMessages((previousMessages) => {
@@ -195,7 +200,7 @@ function handleSendMessage(text: string) {
       conversation.id === conversationId
         ? {
             ...conversation,
-            lastMessage: text,
+            lastMessage: `You: ${text}`,
             timestamp: newMessage.timestamp,
           }
         : conversation,

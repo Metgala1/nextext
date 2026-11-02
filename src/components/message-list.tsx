@@ -1,10 +1,13 @@
 import { useEffect , useRef} from "react";
+import { Check, CheckCheck } from "lucide-react";
+import type { MessageStatus } from "@/data/messages";
 
 type Message = {
   id: string;
   text: string;
   sender: "me" | "them";
   timestamp: string;
+  status: MessageStatus
 };
 
 type MessageListProps = {
@@ -12,6 +15,36 @@ type MessageListProps = {
   searchQuery?: string;
   activeSearchMessageId?: string | null;
 };
+
+function MessageStatusIndicator({
+  status,
+}: {
+  status?: MessageStatus;
+}) {
+  if (!status) return null;
+
+  if (status === "sent") {
+    return (
+      <Check
+        size={14}
+        strokeWidth={2.5}
+        className="shrink-0 text-white"
+        aria-label="Sent"
+      />
+    );
+  }
+
+  return (
+    <CheckCheck
+      size={16}
+      strokeWidth={2.5}
+      className={`shrink-0 ${
+        status === "read" ? "text-sky-300" : "text-white"
+      }`}
+      aria-label={status === "read" ? "Read" : "Delivered"}
+    />
+  );
+}
 
 function highlightText(text: string, query: string, isActive: boolean) {
   const trimmedQuery = query.trim();
@@ -90,13 +123,19 @@ export default function MessageList({
                 {highlightText(message.text, searchQuery, isActive)}
               </p>
 
-              <p
-                className={`mt-1 text-right text-xs ${
-                  isMine ? "text-white/75" : "text-text-secondary"
-                }`}
-              >
-                {message.timestamp}
-              </p>
+              <div className="mt-1 flex items-center justify-end gap-1.5">
+                <span
+                  className={`text-[10px] font-medium leading-none ${
+                    isMine ? "text-white/80" : "text-text-secondary"
+                  }`}
+                >
+                  {message.timestamp}
+                </span>
+
+                {isMine && (
+                  <MessageStatusIndicator status={message.status} />
+                )}
+              </div>
             </div>
           </div>
         );
