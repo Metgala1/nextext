@@ -100,6 +100,9 @@ export default function Home() {
   const [activeNavigationItem, setActiveNavigationItem] =
   useState("Messages");
 
+  const [pendingMessageId, setPendingMessageId] =
+  useState<string | null>(null);
+
   // Open and close starred messages.
   function handleOpenStarredMessages() {
   setActiveNavigationItem("Starred Messages");
@@ -446,16 +449,17 @@ function handleCloseStarredMessages() {
           onOpenStarredMessages={handleOpenStarredMessages}
         />
 
-        {/* STARRED MESSAGES / NORMAL CHAT WORKSPACE */}
         {isStarredMessagesOpen ? (
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <StarredMessages
               messages={starredMessages}
               onBack={handleCloseStarredMessages}
               onSelectMessage={(conversationId, messageId) => {
-                handleSelectConversation(conversationId);
-                setIsStarredMessagesOpen(false);
-              }}
+              setPendingMessageId(messageId);
+              handleSelectConversation(conversationId);
+              setIsStarredMessagesOpen(false);
+              setActiveNavigationItem("Messages");
+          }}
             />
           </div>
         ) : (
@@ -545,6 +549,8 @@ function handleCloseStarredMessages() {
                       matchingMessages[currentSearchResultIndex]?.id ?? null
                     }
                     onReply={handleReplyToMessage}
+                    jumpToMessageId={pendingMessageId}
+                    onMessageJumped={() => setPendingMessageId(null)}
                   />
 
                   {process.env.NODE_ENV === "development" &&

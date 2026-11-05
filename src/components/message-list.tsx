@@ -14,6 +14,8 @@ type MessageListProps = {
   contactName: string;
   onReact: (messageId: string, emoji: string) => void;
   onStar: (messageId: string) => void;
+  jumpToMessageId?: string | null;
+  onMessageJumped?: () => void;
 };
 
 function MessageStatusIndicator({ status }: { status?: MessageStatus }) {
@@ -77,7 +79,9 @@ export default function MessageList({
   onReply,
   contactName,
   onReact,
-  onStar
+  onStar,
+  jumpToMessageId,
+  onMessageJumped
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -90,6 +94,24 @@ export default function MessageList({
   const [highlightedMessageId, setHighlightedMessageId] = useState<
     string | null
   >(null);
+
+  useEffect(() => {
+  if (!jumpToMessageId) return;
+
+  const targetMessage = document.getElementById(
+    `message-${jumpToMessageId}`
+  );
+
+  if (!targetMessage) return;
+
+  targetMessage.scrollIntoView({
+    behavior: "smooth",
+    block: "center",
+  });
+
+  setHighlightedMessageId(jumpToMessageId);
+  onMessageJumped?.();
+}, [jumpToMessageId, messages, onMessageJumped]);
 
   // Remove the "jumped to" highlight after a few seconds.
   useEffect(() => {
