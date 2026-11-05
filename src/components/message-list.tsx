@@ -18,6 +18,7 @@ type MessageListProps = {
   onMessageJumped?: () => void;
   onForward?: (message: Message) => void;
   onDelete: (message: Message) => void;
+  onEdit: (message: Message) => void;
 };
 
 function MessageStatusIndicator({ status }: { status?: MessageStatus }) {
@@ -86,6 +87,7 @@ export default function MessageList({
   onMessageJumped,
   onForward,
   onDelete,
+  onEdit
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -197,6 +199,13 @@ export default function MessageList({
       return;
     }
 
+    if (action === "edit") {
+      if (message.sender !== "me") return;
+
+      onEdit(message);
+      return;
+    }
+
     if (action === "copy") {
       try {
         await navigator.clipboard.writeText(message.text);
@@ -303,6 +312,7 @@ export default function MessageList({
 
             {isMenuOpen && (
               <MessageActionsMenu
+                isOwnMessage={isMine}
                 onAction={(action: MessageAction) =>
                   handleMessageAction(message, action)
                 }
@@ -383,7 +393,11 @@ export default function MessageList({
                     )}
                   </button>
                 )}
-
+                {message.editedAt && (
+                  <span className="ml-2 text-[10px] italic text-text-secondary">
+                    Edited
+                  </span>
+                )}
                 {message.forwardedFrom && (
                   <div
                     className={`mb-1 flex items-center gap-1 text-xs italic ${

@@ -116,7 +116,55 @@ export default function Home() {
   conversationId: string;
 } | null>(null);
 
+const [messageBeingEdited, setMessageBeingEdited] =
+  useState<Message | null>(null);
 
+const [editingConversationId, setEditingConversationId] =
+  useState<string | null>(null);
+
+  function handleCancelEditing() {
+  setMessageBeingEdited(null);
+}
+
+function handleStartEditing(message: Message) {
+  if (!selectedConversation || message.sender !== "me") return;
+
+  setMessageBeingEdited(message);
+  setEditingConversationId(selectedConversation.id);
+  setReplyingToMessage(null);
+}
+
+function handleSaveEdit(messageId: string, newText: string) {
+  if (!editingConversationId || !messageBeingEdited) return;
+
+  const conversationId = editingConversationId;
+
+  setConversationMessages((previousMessages) => {
+    const existingMessages =
+      previousMessages[conversationId] ??
+      getSampleMessages(
+        conversationId,
+        conversations.find((conversation) => conversation.id === conversationId)?.name ?? ""
+      );
+
+    return {
+      ...previousMessages,
+      [conversationId]: existingMessages.map((message) =>
+        message.id === messageId
+          ? {
+              ...message,
+              text: newText,
+              editedAt: new Date().toISOString(),
+            }
+          : message
+      ),
+    };
+  });
+
+  setMessageBeingEdited(null);
+  setEditingConversationId(null);
+}
+  
 function handleRequestMessageDeletion(message: Message) {
   if (!selectedConversation) return;
 
@@ -724,6 +772,7 @@ function handleCloseStarredMessages() {
                   )}
 
                   <MessageList
+                    onEdit={handleStartEditing}
                     onDelete={handleRequestMessageDeletion}
                     onForward={handleOpenForwardDialog}
                     onStar={handleStarMessage}
@@ -777,6 +826,9 @@ function handleCloseStarredMessages() {
                     )}
 
                   <MessageComposer
+                    editingMessage={messageBeingEdited}
+                    onSaveEdit={handleSaveEdit}
+                    onCancelEdit={handleCancelEditing}
                     contactName={selectedConversation.name ?? ""}
                     onSend={handleSendMessage}
                     disabled={!selectedConversation}

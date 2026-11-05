@@ -5,6 +5,7 @@ import {
   Smile,
   Mic,
   X,
+  Save,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -15,7 +16,10 @@ type MessageComposerProps = {
   disabled?: boolean;
   replyingTo?: Message | null;
   onCancelReply?: () => void;
-  contactName: string
+  contactName: string;
+  editingMessage?: Message | null;
+  onSaveEdit: (messageId: string, newText: string) => void;
+  onCancelEdit: () => void;
 };
 
 export default function MessageComposer({
@@ -23,7 +27,10 @@ export default function MessageComposer({
   disabled = false,
   onCancelReply,
   replyingTo,
-  contactName
+  contactName,
+  editingMessage,
+  onSaveEdit,
+  onCancelEdit,
 }: MessageComposerProps) {
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -35,12 +42,32 @@ export default function MessageComposer({
     }
   }, [replyingTo]);
 
-  function handleSend() {
-    const trimmedText = draft.trim();
-    if (!trimmedText || disabled) return;
+  // Load the message text into the input when editing starts.
+  useEffect(() => {
+    if (editingMessage) {
+      setDraft(editingMessage.text);
+      inputRef.current?.focus();
+    }
+  }, [editingMessage]);
 
-    onSend(trimmedText);
+  function handleSend() {
+    const trimmedMessage = draft.trim();
+
+    if (!trimmedMessage) return;
+
+    if (editingMessage) {
+      onSaveEdit(editingMessage.id, trimmedMessage);
+    } else {
+      onSend(trimmedMessage);
+    }
+
     setDraft("");
+  }
+
+  // Cancelling an edit also clears the text that was loaded into the input.
+  function handleCancelEdit() {
+    setDraft("");
+    onCancelEdit();
   }
 
   return (
@@ -48,6 +75,28 @@ export default function MessageComposer({
       className="flex shrink-0 flex-col gap-2 border-t border-border p-3"
       onSubmit={(event) => event.preventDefault()}
     >
+      {/* Editing banner sits above the input row */}
+      {editingMessage && (
+        <div className="mb-2 flex items-center justify-between rounded-lg border border-border bg-surface-elevated px-3 py-2">
+          <div className="flex flex-col">
+            <span className="text-sm font-medium text-foreground">
+              Editing message
+            </span>
+            <span className="text-xs text-text-secondary">
+              Make your changes and save them.
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleCancelEdit}
+            className="text-sm text-text-secondary transition-colors hover:text-foreground"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
       {/* Reply preview sits above the input row, not inside the label */}
       {replyingTo && (
         <div className="flex items-center gap-3 rounded-default border border-border bg-surface-elevated p-3">
@@ -132,12 +181,12 @@ export default function MessageComposer({
 
         <button
           type="submit"
-          aria-label="Send message"
           disabled={disabled}
           className="flex size-12 shrink-0 items-center justify-center rounded-default bg-accent text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           onClick={handleSend}
+          aria-label={editingMessage ? "Save changes" : "Send message"}
         >
-          <Send size={18} aria-hidden="true" />
+          {editingMessage ? <Save size={18} /> : <Send size={18} />}
         </button>
       </div>
     </form>

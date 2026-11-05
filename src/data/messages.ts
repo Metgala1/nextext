@@ -26,6 +26,7 @@ export type Message = {
     messageId: string;
     conversationId: string;
   };
+  editedAt?: string;
 };
 
 export function getSampleMessages(
