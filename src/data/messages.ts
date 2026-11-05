@@ -3,6 +3,13 @@ export type MessageStatus =
   | "delivered"
   | "read";
 
+export type MessageReaction = {
+  emoji: string;
+  userId: string;
+};
+
+export const CURRENT_USER_ID = "current-user "
+
 export type Message = {
   id: string;
   text: string;
@@ -13,6 +20,7 @@ export type Message = {
   replyTo?: string;
   replyToText?: string;
   replyToSender?: "me" | "them";
+  reactions?: MessageReaction[]
 };
 
 export function getSampleMessages(

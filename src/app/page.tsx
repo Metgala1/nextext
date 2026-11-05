@@ -17,6 +17,7 @@ import {
   getSampleMessages,
   type Message,
   type MessageStatus,
+  CURRENT_USER_ID
 } from "@/data/messages";
 
 type ConfirmationAction = "clear" | "block" | "unblock";
@@ -66,6 +67,53 @@ export default function Home() {
 function handleSearchQueryChange(value: string) {
   setSearchQuery(value);
   setCurrentSearchResultIndex(0);
+}
+
+function handleReactToMessage(messageId: string, emoji: string) {
+  if (!selectedConversation) return;
+
+  const conversationId = selectedConversation.id;
+
+  setConversationMessages((previousMessages) => {
+    const currentMessages =
+      previousMessages[conversationId] ??
+      getSampleMessages(conversationId, selectedConversation.name);
+
+    return {
+      ...previousMessages,
+
+      [conversationId]: currentMessages.map((message) => {
+        if (message.id !== messageId) return message;
+
+        const reactions = message.reactions ?? [];
+
+        const existingUserReaction = reactions.find(
+          (reaction) => reaction.userId === CURRENT_USER_ID
+        );
+
+        // Clicking the same emoji removes the user's reaction.
+        if (existingUserReaction?.emoji === emoji) {
+          return {
+            ...message,
+            reactions: reactions.filter(
+              (reaction) => reaction.userId !== CURRENT_USER_ID
+            ),
+          };
+        }
+
+        // Otherwise, replace the user's previous reaction.
+        return {
+          ...message,
+          reactions: [
+            ...reactions.filter(
+              (reaction) => reaction.userId !== CURRENT_USER_ID
+            ),
+            { emoji, userId: CURRENT_USER_ID },
+          ],
+        };
+      }),
+    };
+  });
 }
 
 function handleNextSearchResult() {
@@ -387,6 +435,7 @@ return (
         )}
 
         <MessageList
+        onReact={handleReactToMessage}
           contactName={selectedConversation.name ?? ""}
           messages={messages}
           searchQuery={searchQuery}

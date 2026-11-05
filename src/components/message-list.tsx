@@ -3,6 +3,7 @@ import { Check, CheckCheck, MoreVertical } from "lucide-react";
 import type { Message, MessageStatus } from "@/data/messages";
 import MessageActionsMenu from "./message-actions";
 import type { MessageAction } from "./message-actions";
+import ReactionPicker from "./reaction-picker";
 
 type MessageListProps = {
   messages: Message[];
@@ -10,6 +11,7 @@ type MessageListProps = {
   activeSearchMessageId?: string | null;
   onReply: (message: Message) => void;
   contactName: string;
+  onReact: (messageId: string, emoji: string) => void;
 };
 
 function MessageStatusIndicator({ status }: { status?: MessageStatus }) {
@@ -71,86 +73,130 @@ export default function MessageList({
   searchQuery = "",
   activeSearchMessageId = null,
   onReply,
-  contactName
+  contactName,
+  onReact,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [openMessageMenuId, setOpenMessageMenuId] = useState<string | null>(
     null,
   );
-  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-  null,
-  );
+  const [activeReactionPickerMessageId, setActiveReactionPickerMessageId] =
+    useState<string | null>(null);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<
+    string | null
+  >(null);
 
-function handleMessageContextMenu(
-  event: React.MouseEvent<HTMLDivElement>,
-  messageId: string,
-) {
-  event.preventDefault();
-  setOpenMessageMenuId(messageId);
-}
-
-function handleTouchStart(messageId: string) {
-  longPressTimerRef.current = setTimeout(() => {
-    setOpenMessageMenuId(messageId);
-    longPressTimerRef.current = null;
-  }, 500);
-}
-
-function handleTouchEnd() {
-  if (longPressTimerRef.current) {
-    clearTimeout(longPressTimerRef.current);
-    longPressTimerRef.current = null;
-  }
-}
-
-async function handleMessageAction(
-  message: Message,
-  action: MessageAction,
-) {
-  setOpenMessageMenuId(null);
-
-  if (action === "reply") {
-    onReply(message);
-    return;
-  }
-
-  if (action === "copy") {
-    try {
-      await navigator.clipboard.writeText(message.text);
-    } catch (error) {
-      console.error("Failed to copy message:", error);
-    }
-  }
-}
-  
+  // Remove the "jumped to" highlight after a few seconds.
   useEffect(() => {
-  if (!openMessageMenuId) return;
+    if (!highlightedMessageId) return;
 
-  function handlePointerDown(event: PointerEvent) {
-    const target = event.target;
+    const timeoutId = setTimeout(() => {
+      setHighlightedMessageId(null);
+    }, 4000);
 
-    if (
-      target instanceof Element &&
-      !target.closest("[data-message-menu-root]")
-    ) {
-      setOpenMessageMenuId(null);
+    return () => clearTimeout(timeoutId);
+  }, [highlightedMessageId]);
+
+  function handleJumpToMessage(messageId: string) {
+    const targetMessage = document.getElementById(`message-${messageId}`);
+
+    if (!targetMessage) return;
+
+    targetMessage.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+
+    setHighlightedMessageId(messageId);
+  }
+
+  // Only one popup (actions menu or reaction picker) is open at a time.
+  function openMenuFor(messageId: string | null) {
+    setActiveReactionPickerMessageId(null);
+    setOpenMessageMenuId(messageId);
+  }
+
+  function handleMessageContextMenu(
+    event: React.MouseEvent<HTMLDivElement>,
+    messageId: string,
+  ) {
+    event.preventDefault();
+    openMenuFor(messageId);
+  }
+
+  function handleTouchStart(messageId: string) {
+    longPressTimerRef.current = setTimeout(() => {
+      openMenuFor(messageId);
+      longPressTimerRef.current = null;
+    }, 500);
+  }
+
+  function handleTouchEnd() {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
     }
   }
 
-  function handleKeyDown(event: KeyboardEvent) {
-    if (event.key === "Escape") {
-      setOpenMessageMenuId(null);
+  async function handleMessageAction(message: Message, action: MessageAction) {
+    setOpenMessageMenuId(null);
+
+    if (action === "reply") {
+      onReply(message);
+      return;
+    }
+
+    if (action === "react") {
+      setActiveReactionPickerMessageId(message.id);
+      return;
+    }
+
+    if (action === "copy") {
+      try {
+        await navigator.clipboard.writeText(message.text);
+      } catch (error) {
+        console.error("Failed to copy message:", error);
+      }
     }
   }
 
-  document.addEventListener("pointerdown", handlePointerDown);
-  document.addEventListener("keydown", handleKeyDown);
+  // Close the menu / reaction picker on outside click or Escape.
+  useEffect(() => {
+    if (!openMessageMenuId && !activeReactionPickerMessageId) return;
 
-  return () => {
-    document.removeEventListener("pointerdown", handlePointerDown);
-    document.removeEventListener("keydown", handleKeyDown);
-  };
-}, [openMessageMenuId]);
+    function closePopups() {
+      setOpenMessageMenuId(null);
+      setActiveReactionPickerMessageId(null);
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target;
+
+      if (
+        target instanceof Element &&
+        !target.closest("[data-message-menu-root]")
+      ) {
+        closePopups();
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        closePopups();
+      }
+    }
+
+    // Capture phase so stopPropagation elsewhere can't block it.
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [openMessageMenuId, activeReactionPickerMessageId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({
@@ -184,20 +230,23 @@ async function handleMessageAction(
         const isMine = message.sender === "me";
         const isActive = activeSearchMessageId === message.id;
         const isMenuOpen = openMessageMenuId === message.id;
+        const isReactionPickerOpen =
+          activeReactionPickerMessageId === message.id;
 
+        // data-message-menu-root lives on this wrapper only, so clicks on the
+        // bubble or anywhere else count as "outside". The picker is rendered
+        // inside it, so clicking the picker doesn't close it.
         const optionsControl = (
-          <div className="relative self-center">
+          <div data-message-menu-root className="relative self-center">
             <button
               type="button"
               aria-label="Message options"
               aria-expanded={isMenuOpen}
-              onClick={() =>
-                setOpenMessageMenuId((current) =>
-                  current === message.id ? null : message.id,
-                )
-              }
+              onClick={() => openMenuFor(isMenuOpen ? null : message.id)}
               className={`self-center rounded-md p-1.5 text-text-secondary transition-opacity hover:bg-surface-elevated hover:text-foreground focus:opacity-100 group-hover:opacity-100 ${
-                isMenuOpen ? "opacity-100" : "opacity-0"
+                isMenuOpen || isReactionPickerOpen
+                  ? "opacity-100"
+                  : "opacity-0"
               }`}
             >
               <MoreVertical size={18} />
@@ -210,6 +259,21 @@ async function handleMessageAction(
                 }
               />
             )}
+
+            {isReactionPickerOpen && (
+              <div
+                className={`absolute bottom-full z-50 mb-2 ${
+                  isMine ? "right-0" : "left-0"
+                }`}
+              >
+                <ReactionPicker
+                  onSelect={(emoji) => {
+                    onReact(message.id, emoji);
+                    setActiveReactionPickerMessageId(null);
+                  }}
+                />
+              </div>
+            )}
           </div>
         );
 
@@ -217,7 +281,6 @@ async function handleMessageAction(
           <div
             id={`message-${message.id}`}
             key={message.id}
-            data-message-menu-root
             onContextMenu={(event) =>
               handleMessageContextMenu(event, message.id)
             }
@@ -232,43 +295,84 @@ async function handleMessageAction(
             {/* My messages: options on the left of the bubble */}
             {isMine && optionsControl}
 
+            {/* Column wrapper: bubble on top, reactions underneath */}
             <div
-              className={`max-w-[75%] rounded-default px-4 py-3 ${
-                isMine
-                  ? "bg-accent text-white"
-                  : "bg-surface-elevated text-foreground"
+              className={`flex max-w-[75%] flex-col ${
+                isMine ? "items-end" : "items-start"
               }`}
             >
-              {message.replyTo && (
-                <div className="mb-2 rounded-md border-l-2 border-accent bg-black/10 px-3 py-2">
-                  <p className="mb-1 text-xs font-semibold text-accent">
-                    {message.replyToSender === "me"
-                      ? "You"
-                      : contactName}
-                  </p>
+              <div
+                className={`rounded-default px-4 py-3 ${
+                  isMine
+                    ? "bg-accent text-white"
+                    : "bg-surface-elevated text-foreground"
+                } ${
+                  highlightedMessageId === message.id
+                    ? "animate-bounce ring-2 ring-accent ring-offset-2 ring-offset-background"
+                    : ""
+                }`}
+              >
+                {message.replyTo && (
+                  <button
+                    type="button"
+                    onClick={() => handleJumpToMessage(message.replyTo!)}
+                    className="mb-2 block w-full rounded-md border-l-2 border-accent bg-black/10 px-3 py-2 text-left transition-colors hover:bg-black/20"
+                    aria-label="Jump to original message"
+                  >
+                    <p className="mb-1 text-xs font-semibold text-accent">
+                      {message.replyToSender === "me" ? "You" : contactName}
+                    </p>
 
-                  <p className="line-clamp-2 break-words text-xs text-current/75">
-                    {message.replyToText}
-                  </p>
+                    <p className="line-clamp-2 break-words text-xs text-current/75">
+                      {message.replyToText}
+                    </p>
+                  </button>
+                )}
+
+                <p className="whitespace-pre-wrap break-words text-sm leading-6">
+                  {highlightText(message.text, searchQuery, isActive)}
+                </p>
+
+                <div className="mt-1 flex items-center justify-end gap-1.5">
+                  <span
+                    className={`text-[10px] font-medium leading-none ${
+                      isMine ? "text-white/80" : "text-text-secondary"
+                    }`}
+                  >
+                    {message.timestamp}
+                  </span>
+
+                  {isMine && (
+                    <MessageStatusIndicator status={message.status} />
+                  )}
+                </div>
+              </div>
+
+              {message.reactions && message.reactions.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {Object.entries(
+                    message.reactions.reduce<Record<string, number>>(
+                      (groups, reaction) => {
+                        groups[reaction.emoji] =
+                          (groups[reaction.emoji] ?? 0) + 1;
+                        return groups;
+                      },
+                      {},
+                    ),
+                  ).map(([emoji, count]) => (
+                    <div
+                      key={emoji}
+                      className="flex items-center gap-1 rounded-full border border-border bg-surface px-2 py-1 text-xs"
+                    >
+                      <span>{emoji}</span>
+                      <span className="text-text-secondary">{count}</span>
+                    </div>
+                  ))}
                 </div>
               )}
-              <p className="whitespace-pre-wrap break-words text-sm leading-6">
-                {highlightText(message.text, searchQuery, isActive)}
-              </p>
-
-              <div className="mt-1 flex items-center justify-end gap-1.5">
-                <span
-                  className={`text-[10px] font-medium leading-none ${
-                    isMine ? "text-white/80" : "text-text-secondary"
-                  }`}
-                >
-                  {message.timestamp}
-                </span>
-
-                {isMine && <MessageStatusIndicator status={message.status} />}
-              </div>
             </div>
 
+            {/* Their messages: options on the right of the bubble */}
             {!isMine && optionsControl}
           </div>
         );
