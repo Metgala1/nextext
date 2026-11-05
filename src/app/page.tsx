@@ -14,6 +14,7 @@ import MessageComposer from "@/components/message-composer";
 import ContactDetails from "@/components/contactDetails";
 import ConfirmationModal from "@/components/confirmation-modal";
 import MessageSearch from "@/components/message-search";
+import ForwardMessageDialog from "@/components/forward-message-dialog";
 import {
   getSampleMessages,
   type Message,
@@ -23,6 +24,10 @@ import {
 import StarredMessages from "@/components/starred-messages";
 
 type ConfirmationAction = "clear" | "block" | "unblock";
+type MessageToForward = {
+  message: Message;
+  conversationId: string;
+};
 
 export default function Home() {
   const [conversations, setConversations] = useState(sampleConversations);
@@ -102,6 +107,123 @@ export default function Home() {
 
   const [pendingMessageId, setPendingMessageId] =
   useState<string | null>(null);
+
+  const [messageToForward, setMessageToForward] =
+  useState<MessageToForward | null>(null);
+
+  const [messageToDelete, setMessageToDelete] = useState<{
+  message: Message;
+  conversationId: string;
+} | null>(null);
+
+
+function handleRequestMessageDeletion(message: Message) {
+  if (!selectedConversation) return;
+
+  setMessageToDelete({
+    message,
+    conversationId: selectedConversation.id,
+  });
+}
+
+function handleDeleteMessage() {
+  if (!messageToDelete) return;
+
+  const { message, conversationId } = messageToDelete;
+
+  setConversationMessages((previousMessages) => {
+    const existingMessages =
+      previousMessages[conversationId] ??
+      getSampleMessages(
+        conversationId,
+        conversations.find((conversation) => conversation.id === conversationId)?.name ?? ""
+      );
+
+    return {
+      ...previousMessages,
+      [conversationId]: existingMessages.filter(
+        (existingMessage) => existingMessage.id !== message.id
+      ),
+    };
+  });
+
+  setMessageToDelete(null);
+}
+  function handleOpenForwardDialog(message: Message) {
+  if (!selectedConversation) return;
+
+  setMessageToForward({
+    message,
+    conversationId: selectedConversation.id,
+  });
+}
+
+function handleForwardMessage(conversationIds: string[]) {
+  if (!messageToForward) return;
+
+  const { message, conversationId: sourceConversationId } =
+    messageToForward;
+
+  const forwardedAt = new Date().toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  setConversationMessages((previousMessages) => {
+    const updatedMessages = { ...previousMessages };
+
+    for (const recipientId of conversationIds) {
+      const recipient = conversations.find(
+        (conversation) => conversation.id === recipientId
+      );
+
+      if (!recipient) continue;
+
+      const existingMessages =
+        previousMessages[recipientId] ??
+        getSampleMessages(recipientId, recipient.name);
+
+      const forwardedMessage: Message = {
+        id: crypto.randomUUID(),
+        text: message.text,
+        sender: "me",
+        timestamp: forwardedAt,
+        status: "sent",
+        forwardedFrom: {
+          messageId: message.id,
+          conversationId: sourceConversationId,
+        },
+      };
+
+      updatedMessages[recipientId] = [
+        ...existingMessages,
+        forwardedMessage,
+      ];
+    }
+
+    return updatedMessages;
+  });
+
+  setConversations((previousConversations) => {
+  const selectedIds = new Set(conversationIds);
+
+  const updatedRecipients = previousConversations
+    .filter((conversation) => selectedIds.has(conversation.id))
+    .map((conversation) => ({
+      ...conversation,
+      lastMessage: message.text,
+      timestamp: forwardedAt,
+    }));
+
+  const remainingConversations = previousConversations.filter(
+    (conversation) => !selectedIds.has(conversation.id)
+  );
+
+  return [...updatedRecipients, ...remainingConversations];
+});
+
+  setMessageToForward(null);
+}
 
   // Open and close starred messages.
   function handleOpenStarredMessages() {
@@ -443,6 +565,68 @@ function handleCloseStarredMessages() {
           onCancel={() => setConfirmationAction(null)}
         />
 
+        {messageToForward && (
+          <ForwardMessageDialog
+            message={messageToForward.message}
+            conversations={conversations}
+            onClose={() => setMessageToForward(null)}
+            onForward={handleForwardMessage}
+          />
+        )}
+
+        {messageToDelete && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) {
+                setMessageToDelete(null);
+              }
+            }}
+          >
+            <section
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="delete-message-title"
+              aria-describedby="delete-message-description"
+              className="w-full max-w-sm rounded-xl border border-border bg-surface p-5 shadow-2xl"
+            >
+              <h2
+                id="delete-message-title"
+                className="text-lg font-semibold text-foreground"
+              >
+                Delete message?
+              </h2>
+
+              <p
+                id="delete-message-description"
+                className="mt-2 text-sm text-text-secondary"
+              >
+                This message will be removed from this conversation. This action
+                cannot be undone.
+              </p>
+
+              <div className="mt-5 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setMessageToDelete(null)}
+                  className="rounded-lg border border-border px-4 py-2 text-sm text-foreground transition-colors hover:bg-surface-elevated"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDeleteMessage}
+                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
+                >
+                  Delete
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+
        <NavigationRail
           activeItem={activeNavigationItem}
           onNavigate={setActiveNavigationItem}
@@ -540,6 +724,8 @@ function handleCloseStarredMessages() {
                   )}
 
                   <MessageList
+                    onDelete={handleRequestMessageDeletion}
+                    onForward={handleOpenForwardDialog}
                     onStar={handleStarMessage}
                     onReact={handleReactToMessage}
                     contactName={selectedConversation.name ?? ""}

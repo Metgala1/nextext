@@ -22,6 +22,10 @@ export type Message = {
   replyToSender?: "me" | "them";
   reactions?: MessageReaction[]
   starredBy?: string[]
+  forwardedFrom?: {
+    messageId: string;
+    conversationId: string;
+  };
 };
 
 export function getSampleMessages(

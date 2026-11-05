@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, CheckCheck, MoreVertical, Star } from "lucide-react";
-import type { Message, MessageStatus, } from "@/data/messages";
+import { Check, CheckCheck, MoreVertical, Star, Forward } from "lucide-react";
+import type { Message, MessageStatus } from "@/data/messages";
 import MessageActionsMenu from "./message-actions";
 import type { MessageAction } from "./message-actions";
 import ReactionPicker from "./reaction-picker";
@@ -16,6 +16,8 @@ type MessageListProps = {
   onStar: (messageId: string) => void;
   jumpToMessageId?: string | null;
   onMessageJumped?: () => void;
+  onForward?: (message: Message) => void;
+  onDelete: (message: Message) => void;
 };
 
 function MessageStatusIndicator({ status }: { status?: MessageStatus }) {
@@ -81,7 +83,9 @@ export default function MessageList({
   onReact,
   onStar,
   jumpToMessageId,
-  onMessageJumped
+  onMessageJumped,
+  onForward,
+  onDelete,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -96,22 +100,22 @@ export default function MessageList({
   >(null);
 
   useEffect(() => {
-  if (!jumpToMessageId) return;
+    if (!jumpToMessageId) return;
 
-  const targetMessage = document.getElementById(
-    `message-${jumpToMessageId}`
-  );
+    const targetMessage = document.getElementById(
+      `message-${jumpToMessageId}`,
+    );
 
-  if (!targetMessage) return;
+    if (!targetMessage) return;
 
-  targetMessage.scrollIntoView({
-    behavior: "smooth",
-    block: "center",
-  });
+    targetMessage.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
 
-  setHighlightedMessageId(jumpToMessageId);
-  onMessageJumped?.();
-}, [jumpToMessageId, messages, onMessageJumped]);
+    setHighlightedMessageId(jumpToMessageId);
+    onMessageJumped?.();
+  }, [jumpToMessageId, messages, onMessageJumped]);
 
   // Remove the "jumped to" highlight after a few seconds.
   useEffect(() => {
@@ -177,8 +181,19 @@ export default function MessageList({
       setActiveReactionPickerMessageId(message.id);
       return;
     }
+
     if (action === "star") {
       onStar(message.id);
+      return;
+    }
+
+    if (action === "forward") {
+      onForward?.(message);
+      return;
+    }
+
+    if (action === "delete") {
+      onDelete(message);
       return;
     }
 
@@ -257,6 +272,11 @@ export default function MessageList({
     >
       {messages.map((message) => {
         const isMine = message.sender === "me";
+        const isReplyTargetMissing =
+          Boolean(message.replyTo) &&
+          !messages.some(
+            (originalMessage) => originalMessage.id === message.replyTo,
+          );
         const isActive = activeSearchMessageId === message.id;
         const isMenuOpen = openMessageMenuId === message.id;
         const isReactionPickerOpen =
@@ -352,10 +372,27 @@ export default function MessageList({
                       {message.replyToSender === "me" ? "You" : contactName}
                     </p>
 
-                    <p className="line-clamp-2 break-words text-xs text-current/75">
-                      {message.replyToText}
-                    </p>
+                    {isReplyTargetMissing ? (
+                      <p className="text-xs italic text-text-secondary">
+                        Original message deleted
+                      </p>
+                    ) : (
+                      <p className="line-clamp-2 text-xs text-text-secondary">
+                        {message.replyToText}
+                      </p>
+                    )}
                   </button>
+                )}
+
+                {message.forwardedFrom && (
+                  <div
+                    className={`mb-1 flex items-center gap-1 text-xs italic ${
+                      isMine ? "text-white/80" : "text-text-secondary"
+                    }`}
+                  >
+                    <Forward size={12} />
+                    <span>Forwarded</span>
+                  </div>
                 )}
 
                 <p className="whitespace-pre-wrap break-words text-sm leading-6">
@@ -370,6 +407,7 @@ export default function MessageList({
                   >
                     {message.timestamp}
                   </span>
+
                   {message.starredBy?.includes(CURRENT_USER_ID) && (
                     <Star
                       size={12}
@@ -388,10 +426,7 @@ export default function MessageList({
                 <div className="mt-1 flex flex-wrap gap-1">
                   {Object.entries(
                     message.reactions.reduce<
-                      Record<
-                        string,
-                        { count: number; reactedByMe: boolean }
-                      >
+                      Record<string, { count: number; reactedByMe: boolean }>
                     >((groups, reaction) => {
                       const group = groups[reaction.emoji] ?? {
                         count: 0,
@@ -407,19 +442,19 @@ export default function MessageList({
                       groups[reaction.emoji] = group;
 
                       return groups;
-                    }, {})
+                    }, {}),
                   ).map(([emoji, group]) => (
                     <button
-                        key={emoji}
-                        type="button"
-                        aria-label={`React with ${emoji}. ${group.count} reactions`}
-                        onClick={() => onReact(message.id, emoji)}
-                        className={`flex items-center gap-1 rounded-full border px-2 py-1 text-xs transition-colors hover:border-accent ${
-                          group.reactedByMe
-                            ? "border-accent bg-accent/10"
-                            : "border-border bg-surface"
-                        }`}
-                      >
+                      key={emoji}
+                      type="button"
+                      aria-label={`React with ${emoji}. ${group.count} reactions`}
+                      onClick={() => onReact(message.id, emoji)}
+                      className={`flex items-center gap-1 rounded-full border px-2 py-1 text-xs transition-colors hover:border-accent ${
+                        group.reactedByMe
+                          ? "border-accent bg-accent/10"
+                          : "border-border bg-surface"
+                      }`}
+                    >
                       <span>{emoji}</span>
                       <span className="text-text-secondary">
                         {group.count}
