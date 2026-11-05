@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, CheckCheck, MoreVertical } from "lucide-react";
-import type { Message, MessageStatus } from "@/data/messages";
+import { Check, CheckCheck, MoreVertical, Star } from "lucide-react";
+import type { Message, MessageStatus, } from "@/data/messages";
 import MessageActionsMenu from "./message-actions";
 import type { MessageAction } from "./message-actions";
 import ReactionPicker from "./reaction-picker";
+import { CURRENT_USER_ID } from "@/data/messages";
 
 type MessageListProps = {
   messages: Message[];
@@ -12,6 +13,7 @@ type MessageListProps = {
   onReply: (message: Message) => void;
   contactName: string;
   onReact: (messageId: string, emoji: string) => void;
+  onStar: (messageId: string) => void;
 };
 
 function MessageStatusIndicator({ status }: { status?: MessageStatus }) {
@@ -75,6 +77,7 @@ export default function MessageList({
   onReply,
   contactName,
   onReact,
+  onStar
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -150,6 +153,10 @@ export default function MessageList({
 
     if (action === "react") {
       setActiveReactionPickerMessageId(message.id);
+      return;
+    }
+    if (action === "star") {
+      onStar(message.id);
       return;
     }
 
@@ -341,6 +348,13 @@ export default function MessageList({
                   >
                     {message.timestamp}
                   </span>
+                  {message.starredBy?.includes(CURRENT_USER_ID) && (
+                    <Star
+                      size={12}
+                      className="shrink-0 fill-current text-amber-400"
+                      aria-label="Starred message"
+                    />
+                  )}
 
                   {isMine && (
                     <MessageStatusIndicator status={message.status} />
@@ -351,22 +365,44 @@ export default function MessageList({
               {message.reactions && message.reactions.length > 0 && (
                 <div className="mt-1 flex flex-wrap gap-1">
                   {Object.entries(
-                    message.reactions.reduce<Record<string, number>>(
-                      (groups, reaction) => {
-                        groups[reaction.emoji] =
-                          (groups[reaction.emoji] ?? 0) + 1;
-                        return groups;
-                      },
-                      {},
-                    ),
-                  ).map(([emoji, count]) => (
-                    <div
-                      key={emoji}
-                      className="flex items-center gap-1 rounded-full border border-border bg-surface px-2 py-1 text-xs"
-                    >
+                    message.reactions.reduce<
+                      Record<
+                        string,
+                        { count: number; reactedByMe: boolean }
+                      >
+                    >((groups, reaction) => {
+                      const group = groups[reaction.emoji] ?? {
+                        count: 0,
+                        reactedByMe: false,
+                      };
+
+                      group.count += 1;
+
+                      if (reaction.userId === CURRENT_USER_ID) {
+                        group.reactedByMe = true;
+                      }
+
+                      groups[reaction.emoji] = group;
+
+                      return groups;
+                    }, {})
+                  ).map(([emoji, group]) => (
+                    <button
+                        key={emoji}
+                        type="button"
+                        aria-label={`React with ${emoji}. ${group.count} reactions`}
+                        onClick={() => onReact(message.id, emoji)}
+                        className={`flex items-center gap-1 rounded-full border px-2 py-1 text-xs transition-colors hover:border-accent ${
+                          group.reactedByMe
+                            ? "border-accent bg-accent/10"
+                            : "border-border bg-surface"
+                        }`}
+                      >
                       <span>{emoji}</span>
-                      <span className="text-text-secondary">{count}</span>
-                    </div>
+                      <span className="text-text-secondary">
+                        {group.count}
+                      </span>
+                    </button>
                   ))}
                 </div>
               )}

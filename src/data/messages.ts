@@ -21,6 +21,7 @@ export type Message = {
   replyToText?: string;
   replyToSender?: "me" | "them";
   reactions?: MessageReaction[]
+  starredBy?: string[]
 };
 
 export function getSampleMessages(

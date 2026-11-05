@@ -8,8 +8,15 @@ import {
   Settings,
   UserGroup,
   CircleDashed,
+  Star,
   type LucideIcon,
 } from "lucide-react";
+
+type NavigationRailProps = {
+  activeItem: string;
+  onNavigate: (label: string) => void;
+  onOpenStarredMessages: () => void;
+};
 
 type NavigationItem = {
   label: string;
@@ -21,11 +28,15 @@ const navigationItems: NavigationItem[] = [
   { label: "Contacts", icon: Users },
   { label: "Group", icon: UserGroup },
   { label: "Status", icon: CircleDashed },
+  { label: "Starred Messages", icon: Star },
   { label: "Settings", icon: Settings },
 ];
 
-export default function NavigationRail() {
-  const [activeItem, setActiveItem] = useState("Messages");
+export default function NavigationRail({
+  activeItem,
+  onNavigate,
+  onOpenStarredMessages,
+}: NavigationRailProps) {
 
   return (
     <aside className="flex h-full min-h-screen w-60 shrink-0 flex-col border-r border-border bg-surface p-4">
@@ -51,7 +62,13 @@ export default function NavigationRail() {
             <button
               key={label}
               type="button"
-              onClick={() => setActiveItem(label)}
+              onClick={() => {
+              onNavigate(label);
+
+              if (label === "Starred Messages") {
+                onOpenStarredMessages();
+              }
+            }}
               aria-current={isActive ? "page" : undefined}
               className={`flex h-11 items-center gap-3 rounded-default px-3 text-sm transition-colors ${
                 isActive
