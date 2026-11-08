@@ -287,7 +287,7 @@ export default function MessageList({
       className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6"
     >
       {messages.map((message) => {
-        const isMine = message.sender === "me";
+        const isMine = message.senderId ? message.senderId === CURRENT_USER_ID : message.sender === "me";
         const isReplyTargetMissing =
           Boolean(message.replyTo) &&
           !messages.some(
@@ -298,9 +298,7 @@ export default function MessageList({
         const isReactionPickerOpen =
           activeReactionPickerMessageId === message.id;
 
-        // data-message-menu-root lives on this wrapper only, so clicks on the
-        // bubble or anywhere else count as "outside". The picker is rendered
-        // inside it, so clicking the picker doesn't close it.
+        
         const optionsControl = (
           <div data-message-menu-root className="relative self-center">
             <button
@@ -320,7 +318,11 @@ export default function MessageList({
             {isMenuOpen && (
               <MessageActionsMenu
                 isPinned={Boolean(message.pinnedAt)}
-                isOwnMessage={isMine}
+                isOwnMessage={
+                  message.senderId
+                    ? message.senderId === CURRENT_USER_ID
+                    : message.sender === "me"
+                }
                 onAction={(action: MessageAction) =>
                   handleMessageAction(message, action)
                 }

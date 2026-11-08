@@ -1,3 +1,5 @@
+import { CURRENT_USER } from "./users";
+
 export type ConversationType = "direct" | "group";
 
 export type GroupRole = "admin" | "member";
@@ -30,6 +32,28 @@ export interface Conversation {
   description?: string;
 
 }
+
+export function getDirectParticipants(
+  conversation: Conversation,
+): ConversationParticipant[] {
+  return [
+    {
+      id: CURRENT_USER.id,
+      name: CURRENT_USER.name,
+      initials: CURRENT_USER.initials,
+      role: "member",
+    },
+    {
+      id: `${conversation.id}-contact`,
+      name: conversation.name,
+      initials: conversation.initials,
+      role: "member",
+      isOnline: conversation.isOnline,
+      lastSeen: conversation.lastSeen,
+    },
+  ];
+}
+
 
 export const sampleConversations: Conversation[] = [
   {

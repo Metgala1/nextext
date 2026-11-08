@@ -5,9 +5,9 @@ import AppShell from "@/components/app-shell";
 import ThemeToggle from "@/components/theme-toggle";
 import NavigationRail from "@/components/navigation-rail";
 import ConversationList from "@/components/conversation-list";
-import { MessageSquareText , Pin, X } from "lucide-react";
+import { MessageSquareText, Pin, X } from "lucide-react";
 import { useState } from "react";
-import { sampleConversations } from "@/data/conversation";
+import { sampleConversations, getDirectParticipants } from "@/data/conversation";
 import ChatHeader from "@/components/chat-header";
 import MessageList from "@/components/message-list";
 import MessageComposer from "@/components/message-composer";
@@ -42,6 +42,11 @@ export default function Home() {
     (chat) => chat.id === selectedConversationId,
   );
 
+  const selectedConversationParticipants = selectedConversation
+    ? getDirectParticipants(selectedConversation)
+    : [];
+
+
   const [isContactDetailsOpen, setIsContactDetailsOpen] = useState(false);
 
   const [replyingToMessage, setReplyingToMessage] =
@@ -69,17 +74,17 @@ export default function Home() {
 
   const messages =
     selectedConversation &&
-    !clearedConversationIds.includes(selectedConversation.id)
+      !clearedConversationIds.includes(selectedConversation.id)
       ? (
-          conversationMessages[selectedConversation.id] ??
-          getSampleMessages(
-            selectedConversation.id,
-            selectedConversation.name,
-          )
-        ).map((message) => ({
-          ...message,
-          status: message.status ?? "sent",
-        }))
+        conversationMessages[selectedConversation.id] ??
+        getSampleMessages(
+          selectedConversation.id,
+          selectedConversation.name,
+        )
+      ).map((message) => ({
+        ...message,
+        status: message.status ?? "sent",
+      }))
       : [];
 
   const matchingMessages = messages.filter((message) =>
@@ -89,18 +94,18 @@ export default function Home() {
   );
 
   const [isPinnedMessagesOpen, setIsPinnedMessagesOpen] =
-  useState(false);
+    useState(false);
 
   const pinnedMessages = messages
-  .filter((message) => Boolean(message.pinnedAt))
-  .sort(
-    (a, b) =>
-      new Date(b.pinnedAt!).getTime() -
-      new Date(a.pinnedAt!).getTime()
-  );
+    .filter((message) => Boolean(message.pinnedAt))
+    .sort(
+      (a, b) =>
+        new Date(b.pinnedAt!).getTime() -
+        new Date(a.pinnedAt!).getTime()
+    );
 
   const [pinLimitNotice, setPinLimitNotice] =
-  useState<string | null>(null);
+    useState<string | null>(null);
 
   const starredMessages = conversations.flatMap((conversation) => {
     const messages =
@@ -119,245 +124,251 @@ export default function Home() {
   });
 
   const [activeNavigationItem, setActiveNavigationItem] =
-  useState("Messages");
+    useState("Messages");
 
   const [pendingMessageId, setPendingMessageId] =
-  useState<string | null>(null);
+    useState<string | null>(null);
 
   const [messageToForward, setMessageToForward] =
-  useState<MessageToForward | null>(null);
+    useState<MessageToForward | null>(null);
 
   const [messageToDelete, setMessageToDelete] = useState<{
-  message: Message;
-  conversationId: string;
-} | null>(null);
+    message: Message;
+    conversationId: string;
+  } | null>(null);
 
-const [messageBeingEdited, setMessageBeingEdited] =
-  useState<Message | null>(null);
+  const [messageBeingEdited, setMessageBeingEdited] =
+    useState<Message | null>(null);
 
-const [editingConversationId, setEditingConversationId] =
-  useState<string | null>(null);
+  const [editingConversationId, setEditingConversationId] =
+    useState<string | null>(null);
 
   function handleCancelEditing() {
-  setMessageBeingEdited(null);
-}
+    setMessageBeingEdited(null);
+  }
 
-function handleStartEditing(message: Message) {
-  if (!selectedConversation || message.sender !== "me") return;
+  function handleStartEditing(message: Message) {
+    if (!selectedConversation) return;
 
-  setMessageBeingEdited(message);
-  setEditingConversationId(selectedConversation.id);
-  setReplyingToMessage(null);
-}
+    const isOwnMessage = message.senderId
+      ? message.senderId === CURRENT_USER_ID
+      : message.sender === "me";
 
-function handleSaveEdit(messageId: string, newText: string) {
-  if (!editingConversationId || !messageBeingEdited) return;
+    if (!isOwnMessage) return;
 
-  const conversationId = editingConversationId;
+    setMessageBeingEdited(message);
+    setEditingConversationId(selectedConversation.id);
+    setReplyingToMessage(null);
+  }
 
-  setConversationMessages((previousMessages) => {
-    const existingMessages =
-      previousMessages[conversationId] ??
-      getSampleMessages(
-        conversationId,
-        conversations.find((conversation) => conversation.id === conversationId)?.name ?? ""
-      );
+  function handleSaveEdit(messageId: string, newText: string) {
+    if (!editingConversationId || !messageBeingEdited) return;
 
-    return {
-      ...previousMessages,
-      [conversationId]: existingMessages.map((message) =>
-        message.id === messageId
-          ? {
+    const conversationId = editingConversationId;
+
+    setConversationMessages((previousMessages) => {
+      const existingMessages =
+        previousMessages[conversationId] ??
+        getSampleMessages(
+          conversationId,
+          conversations.find((conversation) => conversation.id === conversationId)?.name ?? ""
+        );
+
+      return {
+        ...previousMessages,
+        [conversationId]: existingMessages.map((message) =>
+          message.id === messageId
+            ? {
               ...message,
               text: newText,
               editedAt: new Date().toISOString(),
             }
-          : message
-      ),
-    };
-  });
+            : message
+        ),
+      };
+    });
 
-  setMessageBeingEdited(null);
-  setEditingConversationId(null);
-}
-
-function handleTogglePinMessage(message: Message) {
-  if (!selectedConversation) return;
-
-  const conversationId = selectedConversation.id;
-
-  const existingMessages =
-    conversationMessages[conversationId] ??
-    getSampleMessages(conversationId, selectedConversation.name);
-
-  const targetMessage = existingMessages.find(
-    (item) => item.id === message.id
-  );
-
-  if (!targetMessage) return;
-
-  if (targetMessage.pinnedAt) {
-    setPinLimitNotice(null);
-  } else {
-    const pinnedCount = existingMessages.filter(
-      (item) => Boolean(item.pinnedAt)
-    ).length;
-
-    if (pinnedCount >= MAX_PINNED_MESSAGES) {
-      setPinLimitNotice(
-        `You can only pin ${MAX_PINNED_MESSAGES} messages in a conversation. Unpin one to make room.`
-      );
-      return;
-    }
-
-    setPinLimitNotice(null);
+    setMessageBeingEdited(null);
+    setEditingConversationId(null);
   }
 
-  setConversationMessages((previous) => {
-    const currentMessages =
-      previous[conversationId] ??
+  function handleTogglePinMessage(message: Message) {
+    if (!selectedConversation) return;
+
+    const conversationId = selectedConversation.id;
+
+    const existingMessages =
+      conversationMessages[conversationId] ??
       getSampleMessages(conversationId, selectedConversation.name);
 
-    return {
-      ...previous,
-      [conversationId]: currentMessages.map((item) => {
-        if (item.id !== message.id) return item;
+    const targetMessage = existingMessages.find(
+      (item) => item.id === message.id
+    );
 
-        if (item.pinnedAt) {
-          const { pinnedAt, ...rest } = item;
-          return rest;
-        }
+    if (!targetMessage) return;
 
-        return {
-          ...item,
-          pinnedAt: new Date().toISOString(),
-        };
-      }),
-    };
-  });
-}
-  
-function handleRequestMessageDeletion(message: Message) {
-  if (!selectedConversation) return;
+    if (targetMessage.pinnedAt) {
+      setPinLimitNotice(null);
+    } else {
+      const pinnedCount = existingMessages.filter(
+        (item) => Boolean(item.pinnedAt)
+      ).length;
 
-  setMessageToDelete({
-    message,
-    conversationId: selectedConversation.id,
-  });
-}
+      if (pinnedCount >= MAX_PINNED_MESSAGES) {
+        setPinLimitNotice(
+          `You can only pin ${MAX_PINNED_MESSAGES} messages in a conversation. Unpin one to make room.`
+        );
+        return;
+      }
 
-function handleDeleteMessage() {
-  if (!messageToDelete) return;
-
-  const { message, conversationId } = messageToDelete;
-
-  setConversationMessages((previousMessages) => {
-    const existingMessages =
-      previousMessages[conversationId] ??
-      getSampleMessages(
-        conversationId,
-        conversations.find((conversation) => conversation.id === conversationId)?.name ?? ""
-      );
-
-    return {
-      ...previousMessages,
-      [conversationId]: existingMessages.filter(
-        (existingMessage) => existingMessage.id !== message.id
-      ),
-    };
-  });
-
-  setMessageToDelete(null);
-}
-  function handleOpenForwardDialog(message: Message) {
-  if (!selectedConversation) return;
-
-  setMessageToForward({
-    message,
-    conversationId: selectedConversation.id,
-  });
-}
-
-function handleForwardMessage(conversationIds: string[]) {
-  if (!messageToForward) return;
-
-  const { message, conversationId: sourceConversationId } =
-    messageToForward;
-
-  const forwardedAt = new Date().toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  setConversationMessages((previousMessages) => {
-    const updatedMessages = { ...previousMessages };
-
-    for (const recipientId of conversationIds) {
-      const recipient = conversations.find(
-        (conversation) => conversation.id === recipientId
-      );
-
-      if (!recipient) continue;
-
-      const existingMessages =
-        previousMessages[recipientId] ??
-        getSampleMessages(recipientId, recipient.name);
-
-      const forwardedMessage: Message = {
-        id: crypto.randomUUID(),
-        text: message.text,
-        sender: "me",
-        timestamp: forwardedAt,
-        status: "sent",
-        forwardedFrom: {
-          messageId: message.id,
-          conversationId: sourceConversationId,
-        },
-        senderId: CURRENT_USER_ID
-      };
-
-      updatedMessages[recipientId] = [
-        ...existingMessages,
-        forwardedMessage,
-      ];
+      setPinLimitNotice(null);
     }
 
-    return updatedMessages;
-  });
+    setConversationMessages((previous) => {
+      const currentMessages =
+        previous[conversationId] ??
+        getSampleMessages(conversationId, selectedConversation.name);
 
-  setConversations((previousConversations) => {
-  const selectedIds = new Set(conversationIds);
+      return {
+        ...previous,
+        [conversationId]: currentMessages.map((item) => {
+          if (item.id !== message.id) return item;
 
-  const updatedRecipients = previousConversations
-    .filter((conversation) => selectedIds.has(conversation.id))
-    .map((conversation) => ({
-      ...conversation,
-      lastMessage: message.text,
-      timestamp: forwardedAt,
-    }));
+          if (item.pinnedAt) {
+            const { pinnedAt, ...rest } = item;
+            return rest;
+          }
 
-  const remainingConversations = previousConversations.filter(
-    (conversation) => !selectedIds.has(conversation.id)
-  );
+          return {
+            ...item,
+            pinnedAt: new Date().toISOString(),
+          };
+        }),
+      };
+    });
+  }
 
-  return [...updatedRecipients, ...remainingConversations];
-});
+  function handleRequestMessageDeletion(message: Message) {
+    if (!selectedConversation) return;
 
-  setMessageToForward(null);
-}
+    setMessageToDelete({
+      message,
+      conversationId: selectedConversation.id,
+    });
+  }
+
+  function handleDeleteMessage() {
+    if (!messageToDelete) return;
+
+    const { message, conversationId } = messageToDelete;
+
+    setConversationMessages((previousMessages) => {
+      const existingMessages =
+        previousMessages[conversationId] ??
+        getSampleMessages(
+          conversationId,
+          conversations.find((conversation) => conversation.id === conversationId)?.name ?? ""
+        );
+
+      return {
+        ...previousMessages,
+        [conversationId]: existingMessages.filter(
+          (existingMessage) => existingMessage.id !== message.id
+        ),
+      };
+    });
+
+    setMessageToDelete(null);
+  }
+  function handleOpenForwardDialog(message: Message) {
+    if (!selectedConversation) return;
+
+    setMessageToForward({
+      message,
+      conversationId: selectedConversation.id,
+    });
+  }
+
+  function handleForwardMessage(conversationIds: string[]) {
+    if (!messageToForward) return;
+
+    const { message, conversationId: sourceConversationId } =
+      messageToForward;
+
+    const forwardedAt = new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    setConversationMessages((previousMessages) => {
+      const updatedMessages = { ...previousMessages };
+
+      for (const recipientId of conversationIds) {
+        const recipient = conversations.find(
+          (conversation) => conversation.id === recipientId
+        );
+
+        if (!recipient) continue;
+
+        const existingMessages =
+          previousMessages[recipientId] ??
+          getSampleMessages(recipientId, recipient.name);
+
+        const forwardedMessage: Message = {
+          id: crypto.randomUUID(),
+          text: message.text,
+          sender: "me",
+          timestamp: forwardedAt,
+          status: "sent",
+          forwardedFrom: {
+            messageId: message.id,
+            conversationId: sourceConversationId,
+          },
+          senderId: CURRENT_USER_ID
+        };
+
+        updatedMessages[recipientId] = [
+          ...existingMessages,
+          forwardedMessage,
+        ];
+      }
+
+      return updatedMessages;
+    });
+
+    setConversations((previousConversations) => {
+      const selectedIds = new Set(conversationIds);
+
+      const updatedRecipients = previousConversations
+        .filter((conversation) => selectedIds.has(conversation.id))
+        .map((conversation) => ({
+          ...conversation,
+          lastMessage: message.text,
+          timestamp: forwardedAt,
+        }));
+
+      const remainingConversations = previousConversations.filter(
+        (conversation) => !selectedIds.has(conversation.id)
+      );
+
+      return [...updatedRecipients, ...remainingConversations];
+    });
+
+    setMessageToForward(null);
+  }
 
   // Open and close starred messages.
   function handleOpenStarredMessages() {
-  setActiveNavigationItem("Starred Messages");
-  setIsStarredMessagesOpen(true);
-  setIsContactDetailsOpen(false);
-  setIsSearchOpen(false);
-}
+    setActiveNavigationItem("Starred Messages");
+    setIsStarredMessagesOpen(true);
+    setIsContactDetailsOpen(false);
+    setIsSearchOpen(false);
+  }
 
-function handleCloseStarredMessages() {
-  setIsStarredMessagesOpen(false);
-  setActiveNavigationItem("Messages");
-}
+  function handleCloseStarredMessages() {
+    setIsStarredMessagesOpen(false);
+    setActiveNavigationItem("Messages");
+  }
 
   function handleSearchQueryChange(value: string) {
     setSearchQuery(value);
@@ -554,10 +565,10 @@ function handleCloseStarredMessages() {
       status: "sent",
       ...(replyingToMessage
         ? {
-            replyTo: replyingToMessage.id,
-            replyToText: replyingToMessage.text,
-            replyToSender: replyingToMessage.sender,
-          }
+          replyTo: replyingToMessage.id,
+          replyToText: replyingToMessage.text,
+          replyToSender: replyingToMessage.sender,
+        }
         : {}),
     };
 
@@ -582,10 +593,10 @@ function handleCloseStarredMessages() {
         (conversation) =>
           conversation.id === conversationId
             ? {
-                ...conversation,
-                lastMessage: `You: ${text}`,
-                timestamp: newMessage.timestamp,
-              }
+              ...conversation,
+              lastMessage: `You: ${text}`,
+              timestamp: newMessage.timestamp,
+            }
             : conversation,
       );
 
@@ -615,11 +626,18 @@ function handleCloseStarredMessages() {
 
       return {
         ...previousMessages,
-        [conversationId]: existingMessages.map((message) =>
-          message.id === messageId && message.sender === "me"
-            ? { ...message, status }
-            : message,
-        ),
+        [conversationId]: existingMessages.map((message) => {
+          if (
+            message.id !== messageId ||
+            (message.senderId
+              ? message.senderId !== CURRENT_USER_ID
+              : message.sender !== "me")
+          ) {
+            return message;
+          }
+
+          return { ...message, status };
+        }),
       };
     });
   }
@@ -637,7 +655,11 @@ function handleCloseStarredMessages() {
     return (
       [...currentMessages]
         .reverse()
-        .find((message) => message.sender === "me") ?? null
+        .find((message) =>
+          message.senderId
+            ? message.senderId === CURRENT_USER_ID
+            : message.sender === "me"
+        ) ?? null
     );
   }
 
@@ -749,7 +771,7 @@ function handleCloseStarredMessages() {
           </div>
         )}
 
-       <NavigationRail
+        <NavigationRail
           activeItem={activeNavigationItem}
           onNavigate={setActiveNavigationItem}
           onOpenStarredMessages={handleOpenStarredMessages}
@@ -761,11 +783,11 @@ function handleCloseStarredMessages() {
               messages={starredMessages}
               onBack={handleCloseStarredMessages}
               onSelectMessage={(conversationId, messageId) => {
-              setPendingMessageId(messageId);
-              handleSelectConversation(conversationId);
-              setIsStarredMessagesOpen(false);
-              setActiveNavigationItem("Messages");
-          }}
+                setPendingMessageId(messageId);
+                handleSelectConversation(conversationId);
+                setIsStarredMessagesOpen(false);
+                setActiveNavigationItem("Messages");
+              }}
             />
           </div>
         ) : (
@@ -812,18 +834,18 @@ function handleCloseStarredMessages() {
                   {mutedConversationIds.includes(
                     selectedConversation.id,
                   ) && (
-                    <p className="border-b border-border px-6 py-2 text-xs text-text-secondary">
-                      Notifications are muted for this conversation.
-                    </p>
-                  )}
+                      <p className="border-b border-border px-6 py-2 text-xs text-text-secondary">
+                        Notifications are muted for this conversation.
+                      </p>
+                    )}
 
                   {blockedConversationIds.includes(
                     selectedConversation.id,
                   ) && (
-                    <p className="border-b border-border px-6 py-2 text-xs text-red-500">
-                      This contact is blocked in this demo.
-                    </p>
-                  )}
+                      <p className="border-b border-border px-6 py-2 text-xs text-red-500">
+                        This contact is blocked in this demo.
+                      </p>
+                    )}
 
                   {isSearchOpen && (
                     <MessageSearch
@@ -904,23 +926,23 @@ function handleCloseStarredMessages() {
                   )}
 
                   {isPinnedMessagesOpen && (
-                    <PinnedMessagesPanel 
-                    messages={pinnedMessages}
-                    contactName={selectedConversation?.name ?? ""}
-                    onClose={() => setIsPinnedMessagesOpen(false)}
-                    onSelectMessage={(messageId) => {
-                      setPendingMessageId(messageId);
-                      setIsPinnedMessagesOpen(false)
-                    }}
-                    onUnpin={(messageId) => {
-                      const message = pinnedMessages.find(
-                        (item) => item.id === messageId
-                      );
+                    <PinnedMessagesPanel
+                      messages={pinnedMessages}
+                      contactName={selectedConversation?.name ?? ""}
+                      onClose={() => setIsPinnedMessagesOpen(false)}
+                      onSelectMessage={(messageId) => {
+                        setPendingMessageId(messageId);
+                        setIsPinnedMessagesOpen(false)
+                      }}
+                      onUnpin={(messageId) => {
+                        const message = pinnedMessages.find(
+                          (item) => item.id === messageId
+                        );
 
-                      if (message) {
-                        handleTogglePinMessage(message);
-                      }
-                    }}
+                        if (message) {
+                          handleTogglePinMessage(message);
+                        }
+                      }}
                     />
                   )}
 
