@@ -5,7 +5,7 @@ import AppShell from "@/components/app-shell";
 import ThemeToggle from "@/components/theme-toggle";
 import NavigationRail from "@/components/navigation-rail";
 import ConversationList from "@/components/conversation-list";
-import { MessageSquareText } from "lucide-react";
+import { MessageSquareText , Pin, X } from "lucide-react";
 import { useState } from "react";
 import { sampleConversations } from "@/data/conversation";
 import ChatHeader from "@/components/chat-header";
@@ -15,6 +15,7 @@ import ContactDetails from "@/components/contactDetails";
 import ConfirmationModal from "@/components/confirmation-modal";
 import MessageSearch from "@/components/message-search";
 import ForwardMessageDialog from "@/components/forward-message-dialog";
+import PinnedMessagesPanel from "@/components/pinned-message-panel";
 import {
   getSampleMessages,
   type Message,
@@ -85,7 +86,16 @@ export default function Home() {
       .includes(searchQuery.trim().toLowerCase()),
   );
 
-  // Collect starred messages from every conversation.
+  const [isPinnedMessagesOpen, setIsPinnedMessagesOpen] =
+  useState(false);
+
+  const pinnedMessages = messages
+  .filter((message) => Boolean(message.pinnedAt))
+  .sort(
+    (a, b) =>
+      new Date(b.pinnedAt!).getTime() -
+      new Date(a.pinnedAt!).getTime()
+  );
   const starredMessages = conversations.flatMap((conversation) => {
     const messages =
       conversationMessages[conversation.id] ??
@@ -163,6 +173,38 @@ function handleSaveEdit(messageId: string, newText: string) {
 
   setMessageBeingEdited(null);
   setEditingConversationId(null);
+}
+
+function handleTogglePinMessage(message: Message) {
+  if (!selectedConversation) return;
+
+  const conversationId = selectedConversation.id;
+
+  setConversationMessages((previous) => {
+    const existingMessages =
+      previous[conversationId] ??
+      getSampleMessages(conversationId, selectedConversation.name);
+
+    const updatedMessages = existingMessages.map((item) => {
+      if (item.id !== message.id) return item;
+
+      if (item.pinnedAt) {
+        const { pinnedAt, ...rest } = item;
+        return rest;
+      }
+
+      
+      return {
+        ...item,
+        pinnedAt: new Date().toISOString(),
+      };
+    });
+
+    return {
+      ...previous,
+      [conversationId]: updatedMessages,
+    };
+  });
 }
   
 function handleRequestMessageDeletion(message: Message) {
@@ -771,7 +813,54 @@ function handleCloseStarredMessages() {
                     />
                   )}
 
+                  {pinnedMessages.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsPinnedMessagesOpen(true);
+                      }}
+                      className="flex w-full items-center gap-3 border-b border-border bg-surface px-5 py-3 text-left transition-colors hover:bg-elevated"
+                    >
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                        <Pin size={17} />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-text">
+                            Pinned message
+                          </span>
+
+                          {pinnedMessages.length > 1 && (
+                            <span className="text-xs text-text-secondary">
+                              +{pinnedMessages.length - 1} more
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="truncate text-sm text-text-secondary">
+                          {pinnedMessages[0].text}
+                        </p>
+                      </div>
+
+                      <Pin size={15} className="shrink-0 text-text-secondary" />
+                    </button>
+                  )}
+
+                  {isPinnedMessagesOpen && (
+                    <PinnedMessagesPanel 
+                    messages={pinnedMessages}
+                    contactName={selectedConversation?.name ?? ""}
+                    onClose={() => setIsPinnedMessagesOpen(false)}
+                    onSelectMessage={(messageId) => {
+                      setPendingMessageId(messageId);
+                      setIsPinnedMessagesOpen(false)
+                    }}
+                    />
+                  )}
+
                   <MessageList
+                    onPin={handleTogglePinMessage}
                     onEdit={handleStartEditing}
                     onDelete={handleRequestMessageDeletion}
                     onForward={handleOpenForwardDialog}

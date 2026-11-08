@@ -8,7 +8,8 @@ import {
   SmilePlus,
   Star,
   Trash2,
-  Pencil
+  Pencil,
+  Pin,
 } from "lucide-react";
 
 export type MessageAction =
@@ -18,17 +19,20 @@ export type MessageAction =
   | "star"
   | "forward"
   | "delete"
-  | "edit";
-
+  | "edit"
+  | "pin"
+  | "unpin";
 
 type MessageActionsMenuProps = {
   onAction: (action: MessageAction) => void;
   isOwnMessage: boolean;
+  isPinned: boolean;
 };
 
 export default function MessageActionsMenu({
   onAction,
-  isOwnMessage
+  isOwnMessage,
+  isPinned,
 }: MessageActionsMenuProps) {
   const actions = [
     { id: "reply", label: "Reply", icon: Reply },
@@ -38,14 +42,24 @@ export default function MessageActionsMenu({
     { id: "forward", label: "Forward", icon: Forward },
     { id: "delete", label: "Delete", icon: Trash2 },
     { id: "edit", label: "Edit", icon: Pencil },
+    { id: "pin", label: "Pin", icon: Pin },
+    { id: "unpin", label: "Unpin", icon: Pin },
   ] as const;
+
+  const visibleActions = actions
+    .filter((action) => action.id !== "edit" || isOwnMessage)
+    .filter((action) => {
+      if (action.id === "pin") return !isPinned;
+      if (action.id === "unpin") return isPinned;
+      return true;
+    });
 
   return (
     <div
       role="menu"
       className="absolute right-0 top-full z-50 mt-2 w-48 rounded-default border border-border bg-surface p-1 shadow-xl"
     >
-      {actions.filter((action) => action.id !== "edit" || isOwnMessage).map((action) => {
+      {visibleActions.map((action) => {
         const Icon = action.icon;
         const isDelete = action.id === "delete";
 
@@ -56,9 +70,7 @@ export default function MessageActionsMenu({
             role="menuitem"
             onClick={() => onAction(action.id)}
             className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-surface-elevated ${
-              isDelete
-                ? "text-red-400"
-                : "text-foreground"
+              isDelete ? "text-red-400" : "text-foreground"
             }`}
           >
             <Icon size={16} />

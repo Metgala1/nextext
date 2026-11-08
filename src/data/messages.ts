@@ -27,6 +27,7 @@ export type Message = {
     conversationId: string;
   };
   editedAt?: string;
+  pinnedAt?: string;
 };
 
 export function getSampleMessages(

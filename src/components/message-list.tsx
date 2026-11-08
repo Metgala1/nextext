@@ -19,6 +19,7 @@ type MessageListProps = {
   onForward?: (message: Message) => void;
   onDelete: (message: Message) => void;
   onEdit: (message: Message) => void;
+  onPin: (message: Message) => void;
 };
 
 function MessageStatusIndicator({ status }: { status?: MessageStatus }) {
@@ -87,7 +88,8 @@ export default function MessageList({
   onMessageJumped,
   onForward,
   onDelete,
-  onEdit
+  onEdit,
+  onPin
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -196,6 +198,11 @@ export default function MessageList({
 
     if (action === "delete") {
       onDelete(message);
+      return;
+    }
+
+    if (action === "pin" || action === "unpin") {
+      onPin(message);
       return;
     }
 
@@ -312,6 +319,7 @@ export default function MessageList({
 
             {isMenuOpen && (
               <MessageActionsMenu
+                isPinned={Boolean(message.pinnedAt)}
                 isOwnMessage={isMine}
                 onAction={(action: MessageAction) =>
                   handleMessageAction(message, action)
