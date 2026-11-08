@@ -4,7 +4,7 @@ import type { Message, MessageStatus } from "@/data/messages";
 import MessageActionsMenu from "./message-actions";
 import type { MessageAction } from "./message-actions";
 import ReactionPicker from "./reaction-picker";
-import { CURRENT_USER_ID } from "@/data/messages";
+import { CURRENT_USER_ID } from "@/data/users";
 
 type MessageListProps = {
   messages: Message[];

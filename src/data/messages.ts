@@ -8,12 +8,11 @@ export type MessageReaction = {
   userId: string;
 };
 
-export const CURRENT_USER_ID = "current-user "
-
 export type Message = {
   id: string;
   text: string;
   sender: "me" | "them";
+  senderId?: string;
   timestamp: string;
   status?: MessageStatus;
 

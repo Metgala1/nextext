@@ -20,8 +20,8 @@ import {
   getSampleMessages,
   type Message,
   type MessageStatus,
-  CURRENT_USER_ID,
 } from "@/data/messages";
+import { CURRENT_USER_ID } from "@/data/users";
 import StarredMessages from "@/components/starred-messages";
 
 type ConfirmationAction = "clear" | "block" | "unblock";

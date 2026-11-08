@@ -1,3 +1,16 @@
+export type ConversationType = "direct" | "group";
+
+export type GroupRole = "admin" | "member";
+
+export type ConversationParticipant = {
+  id: string;
+  name: string;
+  initials: string;
+  role?: GroupRole;
+  isOnline?: boolean;
+  lastSeen?: string | null;
+};
+
 export interface Conversation {
   id: string;
   name: string;
@@ -6,7 +19,16 @@ export interface Conversation {
   timestamp: string;
   unread: boolean;
   isOnline: boolean;
-  lastSeen: string | null; // null when the user is online
+  lastSeen: string | null;
+
+  //Conversation indentity
+  type?: ConversationType;
+
+  //Membership
+  participants?: ConversationParticipant[];
+  createdBy?: string;
+  description?: string;
+
 }
 
 export const sampleConversations: Conversation[] = [
