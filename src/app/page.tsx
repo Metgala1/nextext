@@ -30,6 +30,8 @@ type MessageToForward = {
   conversationId: string;
 };
 
+const MAX_PINNED_MESSAGES = 3;
+
 export default function Home() {
   const [conversations, setConversations] = useState(sampleConversations);
 
@@ -96,6 +98,10 @@ export default function Home() {
       new Date(b.pinnedAt!).getTime() -
       new Date(a.pinnedAt!).getTime()
   );
+
+  const [pinLimitNotice, setPinLimitNotice] =
+  useState<string | null>(null);
+
   const starredMessages = conversations.flatMap((conversation) => {
     const messages =
       conversationMessages[conversation.id] ??
@@ -180,29 +186,53 @@ function handleTogglePinMessage(message: Message) {
 
   const conversationId = selectedConversation.id;
 
+  const existingMessages =
+    conversationMessages[conversationId] ??
+    getSampleMessages(conversationId, selectedConversation.name);
+
+  const targetMessage = existingMessages.find(
+    (item) => item.id === message.id
+  );
+
+  if (!targetMessage) return;
+
+  if (targetMessage.pinnedAt) {
+    setPinLimitNotice(null);
+  } else {
+    const pinnedCount = existingMessages.filter(
+      (item) => Boolean(item.pinnedAt)
+    ).length;
+
+    if (pinnedCount >= MAX_PINNED_MESSAGES) {
+      setPinLimitNotice(
+        `You can only pin ${MAX_PINNED_MESSAGES} messages in a conversation. Unpin one to make room.`
+      );
+      return;
+    }
+
+    setPinLimitNotice(null);
+  }
+
   setConversationMessages((previous) => {
-    const existingMessages =
+    const currentMessages =
       previous[conversationId] ??
       getSampleMessages(conversationId, selectedConversation.name);
 
-    const updatedMessages = existingMessages.map((item) => {
-      if (item.id !== message.id) return item;
-
-      if (item.pinnedAt) {
-        const { pinnedAt, ...rest } = item;
-        return rest;
-      }
-
-      
-      return {
-        ...item,
-        pinnedAt: new Date().toISOString(),
-      };
-    });
-
     return {
       ...previous,
-      [conversationId]: updatedMessages,
+      [conversationId]: currentMessages.map((item) => {
+        if (item.id !== message.id) return item;
+
+        if (item.pinnedAt) {
+          const { pinnedAt, ...rest } = item;
+          return rest;
+        }
+
+        return {
+          ...item,
+          pinnedAt: new Date().toISOString(),
+        };
+      }),
     };
   });
 }
@@ -813,6 +843,30 @@ function handleCloseStarredMessages() {
                     />
                   )}
 
+                  {pinLimitNotice && (
+                    <div
+                      role="alert"
+                      className="flex items-center justify-between gap-3 border-b border-border bg-surface px-5 py-3"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Pin size={16} className="shrink-0 text-text-secondary" />
+
+                        <p className="text-sm text-text-secondary">
+                          {pinLimitNotice}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setPinLimitNotice(null)}
+                        className="shrink-0 rounded-lg p-1 text-text-secondary transition-colors hover:bg-elevated hover:text-text"
+                        aria-label="Dismiss notification"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  )}
+
                   {pinnedMessages.length > 0 && (
                     <button
                       type="button"
@@ -855,6 +909,15 @@ function handleCloseStarredMessages() {
                     onSelectMessage={(messageId) => {
                       setPendingMessageId(messageId);
                       setIsPinnedMessagesOpen(false)
+                    }}
+                    onUnpin={(messageId) => {
+                      const message = pinnedMessages.find(
+                        (item) => item.id === messageId
+                      );
+
+                      if (message) {
+                        handleTogglePinMessage(message);
+                      }
                     }}
                     />
                   )}
