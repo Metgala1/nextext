@@ -313,6 +313,7 @@ function handleForwardMessage(conversationIds: string[]) {
           messageId: message.id,
           conversationId: sourceConversationId,
         },
+        senderId: CURRENT_USER_ID
       };
 
       updatedMessages[recipientId] = [
@@ -545,6 +546,7 @@ function handleCloseStarredMessages() {
       id: crypto.randomUUID(),
       text,
       sender: "me",
+      senderId: CURRENT_USER_ID,
       timestamp: new Date().toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",

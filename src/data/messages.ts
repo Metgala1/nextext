@@ -1,3 +1,4 @@
+import { CURRENT_USER_ID } from "./users";
 export type MessageStatus =
   | "sent"
   | "delivered"
@@ -7,6 +8,7 @@ export type MessageReaction = {
   emoji: string;
   userId: string;
 };
+
 
 export type Message = {
   id: string;
@@ -53,6 +55,10 @@ export function getSampleMessages(
       id: `${conversationId}-message-${index + 1}`,
       text: messageTexts[index % messageTexts.length],
       sender,
+      senderId:
+        sender === "me"
+          ? CURRENT_USER_ID
+          : `${conversationId}-contact`,
       timestamp: `10:${String(index % 60).padStart(2, "0")}`,
       status: sender === "me" ? "read" : undefined,
     };

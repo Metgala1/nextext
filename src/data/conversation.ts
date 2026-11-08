@@ -41,6 +41,7 @@ export const sampleConversations: Conversation[] = [
     unread: true,
     isOnline: true,
     lastSeen: null,
+    type: "direct",
   },
   {
     id: "conversation-2",
@@ -51,6 +52,7 @@ export const sampleConversations: Conversation[] = [
     unread: false,
     isOnline: false,
     lastSeen: "last seen 12 minutes ago",
+    type: "direct",
   },
   {
     id: "conversation-3",
@@ -61,6 +63,7 @@ export const sampleConversations: Conversation[] = [
     unread: false,
     isOnline: false,
     lastSeen: "last seen today at 10:15",
+    type: "direct",
   },
   {
     id: "conversation-4",
@@ -71,6 +74,7 @@ export const sampleConversations: Conversation[] = [
     unread: true,
     isOnline: true,
     lastSeen: null,
+    type: "direct",
   },
   {
     id: "conversation-5",
@@ -81,6 +85,7 @@ export const sampleConversations: Conversation[] = [
     unread: false,
     isOnline: false,
     lastSeen: "last seen 1 hour ago",
+    type: "direct",
   },
   {
     id: "conversation-6",
@@ -91,6 +96,7 @@ export const sampleConversations: Conversation[] = [
     unread: true,
     isOnline: true,
     lastSeen: null,
+    type: "direct",
   },
   {
     id: "conversation-7",
@@ -101,6 +107,7 @@ export const sampleConversations: Conversation[] = [
     unread: false,
     isOnline: false,
     lastSeen: "last seen today at 09:05",
+    type: "direct",
   },
   {
     id: "conversation-8",
@@ -111,6 +118,7 @@ export const sampleConversations: Conversation[] = [
     unread: false,
     isOnline: false,
     lastSeen: "last seen 2 hours ago",
+    type: "direct",
   },
   {
     id: "conversation-9",
@@ -121,6 +129,7 @@ export const sampleConversations: Conversation[] = [
     unread: true,
     isOnline: true,
     lastSeen: null,
+    type: "direct",
   },
   {
     id: "conversation-10",
@@ -131,6 +140,7 @@ export const sampleConversations: Conversation[] = [
     unread: false,
     isOnline: false,
     lastSeen: "last seen today at 08:30",
+    type: "direct",
   },
   {
     id: "conversation-11",
@@ -141,6 +151,7 @@ export const sampleConversations: Conversation[] = [
     unread: true,
     isOnline: true,
     lastSeen: null,
+    type: "direct",
   },
   {
     id: "conversation-12",
@@ -151,6 +162,7 @@ export const sampleConversations: Conversation[] = [
     unread: false,
     isOnline: false,
     lastSeen: "last seen yesterday at 22:14",
+    type: "direct",
   },
   {
     id: "conversation-13",
@@ -161,6 +173,7 @@ export const sampleConversations: Conversation[] = [
     unread: false,
     isOnline: false,
     lastSeen: "last seen 3 hours ago",
+    type: "direct",
   },
   {
     id: "conversation-14",
@@ -171,6 +184,7 @@ export const sampleConversations: Conversation[] = [
     unread: true,
     isOnline: false,
     lastSeen: "last seen yesterday at 18:47",
+    type: "direct",
   },
   {
     id: "conversation-15",
@@ -181,6 +195,7 @@ export const sampleConversations: Conversation[] = [
     unread: false,
     isOnline: true,
     lastSeen: null,
+    type: "direct",
   },
   {
     id: "conversation-16",
@@ -191,6 +206,7 @@ export const sampleConversations: Conversation[] = [
     unread: false,
     isOnline: false,
     lastSeen: "last seen Tuesday at 16:20",
+    type: "direct",
   },
   {
     id: "conversation-17",
@@ -201,6 +217,7 @@ export const sampleConversations: Conversation[] = [
     unread: true,
     isOnline: false,
     lastSeen: "last seen 45 minutes ago",
+    type: "direct",
   },
   {
     id: "conversation-18",
@@ -211,6 +228,7 @@ export const sampleConversations: Conversation[] = [
     unread: false,
     isOnline: false,
     lastSeen: "last seen Monday at 20:05",
+    type: "direct",
   },
   {
     id: "conversation-19",
@@ -221,6 +239,7 @@ export const sampleConversations: Conversation[] = [
     unread: true,
     isOnline: true,
     lastSeen: null,
+    type: "direct",
   },
   {
     id: "conversation-20",
@@ -231,5 +250,6 @@ export const sampleConversations: Conversation[] = [
     unread: false,
     isOnline: false,
     lastSeen: "last seen Monday at 11:32",
+    type: "direct",
   },
 ];
