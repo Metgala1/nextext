@@ -568,7 +568,12 @@ export default function Home() {
           replyTo: replyingToMessage.id,
           replyToText: replyingToMessage.text,
           replyToSender: replyingToMessage.sender,
-        }
+          replyToSenderId:
+            replyingToMessage.senderId ??
+            (replyingToMessage.sender === "me"
+              ? CURRENT_USER_ID
+              : `${selectedConversation.id}-contact`),
+            }
         : {}),
     };
 
@@ -947,6 +952,7 @@ export default function Home() {
                   )}
 
                   <MessageList
+                    participants={selectedConversationParticipants}
                     onPin={handleTogglePinMessage}
                     onEdit={handleStartEditing}
                     onDelete={handleRequestMessageDeletion}

@@ -5,6 +5,7 @@ import MessageActionsMenu from "./message-actions";
 import type { MessageAction } from "./message-actions";
 import ReactionPicker from "./reaction-picker";
 import { CURRENT_USER_ID } from "@/data/users";
+import type { ConversationParticipant } from "@/data/conversation";
 
 type MessageListProps = {
   messages: Message[];
@@ -20,6 +21,7 @@ type MessageListProps = {
   onDelete: (message: Message) => void;
   onEdit: (message: Message) => void;
   onPin: (message: Message) => void;
+  participants: ConversationParticipant[];
 };
 
 function MessageStatusIndicator({ status }: { status?: MessageStatus }) {
@@ -89,7 +91,8 @@ export default function MessageList({
   onForward,
   onDelete,
   onEdit,
-  onPin
+  onPin,
+  participants,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -106,9 +109,7 @@ export default function MessageList({
   useEffect(() => {
     if (!jumpToMessageId) return;
 
-    const targetMessage = document.getElementById(
-      `message-${jumpToMessageId}`,
-    );
+    const targetMessage = document.getElementById(`message-${jumpToMessageId}`);
 
     if (!targetMessage) return;
 
@@ -145,7 +146,6 @@ export default function MessageList({
     setHighlightedMessageId(messageId);
   }
 
-  // Only one popup (actions menu or reaction picker) is open at a time.
   function openMenuFor(messageId: string | null) {
     setActiveReactionPickerMessageId(null);
     setOpenMessageMenuId(messageId);
@@ -287,7 +287,15 @@ export default function MessageList({
       className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6"
     >
       {messages.map((message) => {
-        const isMine = message.senderId ? message.senderId === CURRENT_USER_ID : message.sender === "me";
+        const isMine = message.senderId
+          ? message.senderId === CURRENT_USER_ID
+          : message.sender === "me";
+        const messageSender = participants.find(
+          (participant) => participant.id === message.senderId,
+        );
+        const senderName = isMine
+          ? "You"
+          : (messageSender?.name ?? contactName);
         const isReplyTargetMissing =
           Boolean(message.replyTo) &&
           !messages.some(
@@ -298,7 +306,6 @@ export default function MessageList({
         const isReactionPickerOpen =
           activeReactionPickerMessageId === message.id;
 
-        
         const optionsControl = (
           <div data-message-menu-root className="relative self-center">
             <button
@@ -307,9 +314,7 @@ export default function MessageList({
               aria-expanded={isMenuOpen}
               onClick={() => openMenuFor(isMenuOpen ? null : message.id)}
               className={`self-center rounded-md p-1.5 text-text-secondary transition-opacity hover:bg-surface-elevated hover:text-foreground focus:opacity-100 group-hover:opacity-100 ${
-                isMenuOpen || isReactionPickerOpen
-                  ? "opacity-100"
-                  : "opacity-0"
+                isMenuOpen || isReactionPickerOpen ? "opacity-100" : "opacity-0"
               }`}
             >
               <MoreVertical size={18} />
@@ -389,7 +394,16 @@ export default function MessageList({
                     aria-label="Jump to original message"
                   >
                     <p className="mb-1 text-xs font-semibold text-accent">
-                      {message.replyToSender === "me" ? "You" : contactName}
+                      {message.replyToSenderId
+                        ? message.replyToSenderId === CURRENT_USER_ID
+                          ? "You"
+                          : (participants.find(
+                              (participant) =>
+                                participant.id === message.replyToSenderId,
+                            )?.name ?? contactName)
+                        : message.replyToSender === "me"
+                          ? "You"
+                          : contactName}
                     </p>
 
                     {isReplyTargetMissing ? (
@@ -440,9 +454,7 @@ export default function MessageList({
                     />
                   )}
 
-                  {isMine && (
-                    <MessageStatusIndicator status={message.status} />
-                  )}
+                  {isMine && <MessageStatusIndicator status={message.status} />}
                 </div>
               </div>
 
@@ -480,9 +492,7 @@ export default function MessageList({
                       }`}
                     >
                       <span>{emoji}</span>
-                      <span className="text-text-secondary">
-                        {group.count}
-                      </span>
+                      <span className="text-text-secondary">{group.count}</span>
                     </button>
                   ))}
                 </div>

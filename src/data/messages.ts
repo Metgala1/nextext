@@ -21,6 +21,7 @@ export type Message = {
   replyTo?: string;
   replyToText?: string;
   replyToSender?: "me" | "them";
+  replyToSenderId?: string;
   reactions?: MessageReaction[]
   starredBy?: string[]
   forwardedFrom?: {
