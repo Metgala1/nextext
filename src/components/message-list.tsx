@@ -22,6 +22,7 @@ type MessageListProps = {
   onEdit: (message: Message) => void;
   onPin: (message: Message) => void;
   participants: ConversationParticipant[];
+  isGroup: Boolean;
 };
 
 function MessageStatusIndicator({ status }: { status?: MessageStatus }) {
@@ -93,6 +94,7 @@ export default function MessageList({
   onEdit,
   onPin,
   participants,
+  isGroup,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -386,6 +388,11 @@ export default function MessageList({
                     : ""
                 }`}
               >
+                {isGroup && !isMine && (
+                  <p className="mb-1 text-xs font-semibold text-accent">
+                    {senderName}
+                  </p>
+                )}
                 {message.replyTo && (
                   <button
                     type="button"

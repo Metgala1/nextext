@@ -1,4 +1,3 @@
-
 "use client";
 
 type ConversationItemProps = {
@@ -6,7 +5,7 @@ type ConversationItemProps = {
   lastMessage: string;
   timestamp: string;
   initials: string;
-  unread?: boolean;
+  unread?: number;
   active?: boolean;
   onClick?: () => void;
 };
@@ -16,10 +15,12 @@ export default function ConversationItem({
   lastMessage,
   timestamp,
   initials,
-  unread = false,
+  unread = 0,
   active = false,
   onClick,
 }: ConversationItemProps) {
+  const hasUnreadMessages = unread > 0;
+
   return (
     <button
       type="button"
@@ -30,11 +31,11 @@ export default function ConversationItem({
           ? "bg-surface-elevated"
           : "hover:bg-surface-elevated/70"
       }`}
-     >
+    >
       <div
         className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-semibold text-accent"
         aria-hidden="true"
-       >
+      >
         {initials}
       </div>
 
@@ -52,7 +53,7 @@ export default function ConversationItem({
         <div className="flex items-center justify-between gap-2">
           <span
             className={`truncate text-sm ${
-              unread
+              hasUnreadMessages
                 ? "font-medium text-foreground"
                 : "text-text-secondary"
             }`}
@@ -60,11 +61,11 @@ export default function ConversationItem({
             {lastMessage}
           </span>
 
-          {unread && (
+          {hasUnreadMessages && (
             <span
               className="size-2 shrink-0 rounded-full bg-accent"
-              aria-label="Unread messages"
-              title="Unread messages"
+              aria-label={`${unread} unread messages`}
+              title={`${unread} unread messages`}
             />
           )}
         </div>

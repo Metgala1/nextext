@@ -1,7 +1,6 @@
 
 "use client";
 
-import { useState } from "react";
 import {
   MessageSquare,
   Users,
@@ -16,6 +15,7 @@ type NavigationRailProps = {
   activeItem: string;
   onNavigate: (label: string) => void;
   onOpenStarredMessages: () => void;
+  onCreateGroup: () => void;
 };
 
 type NavigationItem = {
@@ -36,6 +36,7 @@ export default function NavigationRail({
   activeItem,
   onNavigate,
   onOpenStarredMessages,
+  onCreateGroup,
 }: NavigationRailProps) {
 
   return (
@@ -63,11 +64,16 @@ export default function NavigationRail({
               key={label}
               type="button"
               onClick={() => {
-              onNavigate(label);
+              onNavigate(label)
 
               if (label === "Starred Messages") {
                 onOpenStarredMessages();
               }
+
+              if(label == "Group") {
+                onCreateGroup()
+              }
+
             }}
               aria-current={isActive ? "page" : undefined}
               className={`flex h-11 items-center gap-3 rounded-default px-3 text-sm transition-colors ${

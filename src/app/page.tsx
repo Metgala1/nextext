@@ -7,7 +7,14 @@ import NavigationRail from "@/components/navigation-rail";
 import ConversationList from "@/components/conversation-list";
 import { MessageSquareText, Pin, X } from "lucide-react";
 import { useState } from "react";
-import { sampleConversations, getDirectParticipants } from "@/data/conversation";
+import {
+  sampleConversations,
+  getDirectParticipants,
+  createGroupConversation,
+  type Conversation,
+  type ConversationParticipant,
+} from "@/data/conversation";
+
 import ChatHeader from "@/components/chat-header";
 import MessageList from "@/components/message-list";
 import MessageComposer from "@/components/message-composer";
@@ -16,12 +23,19 @@ import ConfirmationModal from "@/components/confirmation-modal";
 import MessageSearch from "@/components/message-search";
 import ForwardMessageDialog from "@/components/forward-message-dialog";
 import PinnedMessagesPanel from "@/components/pinned-message-panel";
+import CreateGroupDialog from "@/components/create-group-dialog";
+import NewConversationDialog from "@/components/new-conversation-dialog";
+import NewDirectConversationDialog from "@/components/new-direct-conversation";
+
+
+
+import { CURRENT_USER, CURRENT_USER_ID } from "@/data/users";
+
 import {
   getSampleMessages,
   type Message,
   type MessageStatus,
 } from "@/data/messages";
-import { CURRENT_USER_ID } from "@/data/users";
 import StarredMessages from "@/components/starred-messages";
 
 type ConfirmationAction = "clear" | "block" | "unblock";
@@ -33,7 +47,8 @@ type MessageToForward = {
 const MAX_PINNED_MESSAGES = 3;
 
 export default function Home() {
-  const [conversations, setConversations] = useState(sampleConversations);
+ const [conversations, setConversations] =
+  useState<Conversation[]>(sampleConversations);
 
   const [selectedConversationId, setSelectedConversationId] =
     useState<string | null>(null);
@@ -42,10 +57,20 @@ export default function Home() {
     (chat) => chat.id === selectedConversationId,
   );
 
-  const selectedConversationParticipants = selectedConversation
-    ? getDirectParticipants(selectedConversation)
-    : [];
+ const selectedConversationParticipants = selectedConversation
+  ? selectedConversation.type === "group"
+    ? selectedConversation.participants ?? []
+    : getDirectParticipants(selectedConversation)
+  : [];
 
+  const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
+  const availableContacts: ConversationParticipant[] =
+  sampleConversations.map(
+    (conversation) => getDirectParticipants(conversation)[1]
+  );
+
+  const [isNewConversationOpen, setIsNewConversationOpen] =
+  useState(false);
 
   const [isContactDetailsOpen, setIsContactDetailsOpen] = useState(false);
 
@@ -143,9 +168,78 @@ export default function Home() {
   const [editingConversationId, setEditingConversationId] =
     useState<string | null>(null);
 
+  const [isNewDirectConversationOpen, setIsNewDirectConversationOpen] =
+  useState(false);
+
   function handleCancelEditing() {
     setMessageBeingEdited(null);
   }
+
+  function handleSelectConversationType(type: "direct" | "group") {
+  setIsNewConversationOpen(false);
+
+  if (type === "group") {
+    setIsCreateGroupOpen(true);
+  }
+
+  if (type === "direct") {
+    setIsNewDirectConversationOpen(true)
+  }
+}
+
+  function handleCreateGroup(data: {
+  name: string;
+  description: string;
+  participantIds: string[];
+}) {
+  const selectedContacts = availableContacts.filter((contact) =>
+    data.participantIds.includes(contact.id)
+  );
+
+  const participants: ConversationParticipant[] = [
+    {
+      ...CURRENT_USER,
+      role: "admin",
+    },
+    ...selectedContacts,
+  ];
+
+  const newGroup = createGroupConversation({
+    name: data.name,
+    description: data.description || undefined,
+    participants,
+    createdBy: CURRENT_USER_ID,
+  });
+
+  setConversations((previous) => [newGroup, ...previous]);
+
+  setConversationMessages((previous) => ({
+    ...previous,
+    [newGroup.id]: [],
+  }));
+
+  setIsCreateGroupOpen(false);
+  handleSelectConversation(newGroup.id);
+  setActiveNavigationItem("Messages");
+}
+
+function handleSelectDirectContact(contactId: string) {
+  const existingConversation = conversations.find((conversation) => {
+    if (conversation.type !== "direct") return false;
+
+    const participants = getDirectParticipants(conversation);
+
+    return participants.some(
+      (participant) => participant.id === contactId
+    );
+  });
+
+  if (!existingConversation) return;
+
+  setIsNewDirectConversationOpen(false);
+  setActiveNavigationItem("Messages");
+  handleSelectConversation(existingConversation.id);
+}
 
   function handleStartEditing(message: Message) {
     if (!selectedConversation) return;
@@ -668,18 +762,18 @@ export default function Home() {
     );
   }
 
-  function handleSelectConversation(conversationId: string) {
-    setSelectedConversationId(conversationId);
-    setReplyingToMessage(null);
+function handleSelectConversation(conversationId: string) {
+  setSelectedConversationId(conversationId);
+  setReplyingToMessage(null);
 
-    setConversations((previousConversations) =>
-      previousConversations.map((conversation) =>
-        conversation.id === conversationId
-          ? { ...conversation, unread: false }
-          : conversation,
-      ),
-    );
-  }
+  setConversations((previousConversations) =>
+    previousConversations.map((conversation) =>
+      conversation.id === conversationId
+        ? { ...conversation, unread: 0 }
+        : conversation,
+    ),
+  );
+}
 
   const latestOutgoingMessage = getLatestOutgoingMessage();
 
@@ -777,6 +871,7 @@ export default function Home() {
         )}
 
         <NavigationRail
+          onCreateGroup={() => setIsCreateGroupOpen(true)}
           activeItem={activeNavigationItem}
           onNavigate={setActiveNavigationItem}
           onOpenStarredMessages={handleOpenStarredMessages}
@@ -798,6 +893,7 @@ export default function Home() {
         ) : (
           <>
             <ConversationList
+              onNewConversation={() => setIsNewConversationOpen(true)}
               selectedConversationId={selectedConversationId}
               onSelectConversation={handleSelectConversation}
               conversations={conversations}
@@ -968,6 +1064,7 @@ export default function Home() {
                     onReply={handleReplyToMessage}
                     jumpToMessageId={pendingMessageId}
                     onMessageJumped={() => setPendingMessageId(null)}
+                    isGroup={selectedConversation?.type === "group"}
                   />
 
                   {process.env.NODE_ENV === "development" &&
@@ -1049,6 +1146,29 @@ export default function Home() {
               />
             )}
           </>
+        )}
+
+        {isCreateGroupOpen && (
+          <CreateGroupDialog
+            contacts={availableContacts}
+            onClose={() => setIsCreateGroupOpen(false)}
+            onCreate={handleCreateGroup}
+          />
+        )}
+
+        {isNewConversationOpen && (
+          <NewConversationDialog
+            onClose={() => setIsNewConversationOpen(false)}
+            onSelectType={handleSelectConversationType}
+          />
+        )}
+
+        {isNewDirectConversationOpen && (
+          <NewDirectConversationDialog
+            contacts={availableContacts}
+            onClose={() => setIsNewDirectConversationOpen(false)}
+            onSelectContact={handleSelectDirectContact}
+          />
         )}
       </main>
     </AppShell>

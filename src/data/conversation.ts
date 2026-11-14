@@ -1,5 +1,6 @@
 import { CURRENT_USER } from "./users";
 
+
 export type ConversationType = "direct" | "group";
 
 export type GroupRole = "admin" | "member";
@@ -13,28 +14,32 @@ export type ConversationParticipant = {
   lastSeen?: string | null;
 };
 
-export interface Conversation {
+type ConversationBase = {
   id: string;
   name: string;
   initials: string;
   lastMessage: string;
   timestamp: string;
-  unread: boolean;
+  unread: number;
   isOnline: boolean;
   lastSeen: string | null;
+};
 
-  //Conversation indentity
-  type?: ConversationType;
+export type DirectConversation = ConversationBase & {
+  type: "direct";
+};
 
-  //Membership
-  participants?: ConversationParticipant[];
-  createdBy?: string;
+export type GroupConversation = ConversationBase & {
+  type: "group";
+  participants: ConversationParticipant[];
+  createdBy: string;
   description?: string;
+};
 
-}
+export type Conversation = DirectConversation | GroupConversation;
 
 export function getDirectParticipants(
-  conversation: Conversation,
+  conversation: DirectConversation,
 ): ConversationParticipant[] {
   return [
     {
@@ -54,15 +59,42 @@ export function getDirectParticipants(
   ];
 }
 
+export function createGroupConversation({
+  name,
+  description,
+  participants,
+  createdBy,
+}: {
+  name: string;
+  description?: string;
+  participants: ConversationParticipant[];
+  createdBy: string;
+}): GroupConversation {
+  return {
+    id: crypto.randomUUID(),
+    type: "group",
+    name,
+    initials: name.slice(0, 2).toUpperCase(),
+    lastMessage: "Group created",
+    timestamp: new Date().toISOString(),
+    unread: 0,
+    isOnline: false,
+    lastSeen: null,
+    participants,
+    createdBy,
+    description,
+  };
+}
 
-export const sampleConversations: Conversation[] = [
+
+export const sampleConversations: DirectConversation[] = [
   {
     id: "conversation-1",
     name: "Alex Morgan",
     initials: "AM",
     lastMessage: "Are we still meeting tomorrow?",
     timestamp: "10:42",
-    unread: true,
+    unread: 1,
     isOnline: true,
     lastSeen: null,
     type: "direct",
@@ -73,7 +105,7 @@ export const sampleConversations: Conversation[] = [
     initials: "SC",
     lastMessage: "I've sent you the document.",
     timestamp: "10:35",
-    unread: false,
+    unread: 2,
     isOnline: false,
     lastSeen: "last seen 12 minutes ago",
     type: "direct",
@@ -84,7 +116,7 @@ export const sampleConversations: Conversation[] = [
     initials: "JL",
     lastMessage: "Thanks, talk to you later!",
     timestamp: "10:12",
-    unread: false,
+    unread: 2,
     isOnline: false,
     lastSeen: "last seen today at 10:15",
     type: "direct",
@@ -95,7 +127,7 @@ export const sampleConversations: Conversation[] = [
     initials: "MJ",
     lastMessage: "That sounds like a great plan.",
     timestamp: "09:58",
-    unread: true,
+    unread: 2,
     isOnline: true,
     lastSeen: null,
     type: "direct",
@@ -106,7 +138,7 @@ export const sampleConversations: Conversation[] = [
     initials: "EW",
     lastMessage: "Can you review the latest version?",
     timestamp: "09:41",
-    unread: false,
+    unread: 2,
     isOnline: false,
     lastSeen: "last seen 1 hour ago",
     type: "direct",
@@ -117,7 +149,7 @@ export const sampleConversations: Conversation[] = [
     initials: "DO",
     lastMessage: "I'll call you when I get home.",
     timestamp: "09:18",
-    unread: true,
+    unread: 3,
     isOnline: true,
     lastSeen: null,
     type: "direct",
@@ -128,7 +160,7 @@ export const sampleConversations: Conversation[] = [
     initials: "OM",
     lastMessage: "Perfect, thank you!",
     timestamp: "09:02",
-    unread: false,
+    unread: 3,
     isOnline: false,
     lastSeen: "last seen today at 09:05",
     type: "direct",
@@ -139,7 +171,7 @@ export const sampleConversations: Conversation[] = [
     initials: "DK",
     lastMessage: "Did you get a chance to look at it?",
     timestamp: "08:47",
-    unread: false,
+    unread: 2,
     isOnline: false,
     lastSeen: "last seen 2 hours ago",
     type: "direct",
@@ -150,7 +182,7 @@ export const sampleConversations: Conversation[] = [
     initials: "IB",
     lastMessage: "Let's catch up this weekend.",
     timestamp: "08:26",
-    unread: true,
+    unread: 3,
     isOnline: true,
     lastSeen: null,
     type: "direct",
@@ -161,7 +193,7 @@ export const sampleConversations: Conversation[] = [
     initials: "CA",
     lastMessage: "The meeting notes are in the shared folder.",
     timestamp: "08:10",
-    unread: false,
+    unread: 1,
     isOnline: false,
     lastSeen: "last seen today at 08:30",
     type: "direct",
@@ -172,7 +204,7 @@ export const sampleConversations: Conversation[] = [
     initials: "SM",
     lastMessage: "I've added my feedback to the design.",
     timestamp: "Yesterday",
-    unread: true,
+    unread: 3,
     isOnline: true,
     lastSeen: null,
     type: "direct",
@@ -183,7 +215,7 @@ export const sampleConversations: Conversation[] = [
     initials: "WT",
     lastMessage: "See you at the office on Monday.",
     timestamp: "Yesterday",
-    unread: false,
+    unread: 2,
     isOnline: false,
     lastSeen: "last seen yesterday at 22:14",
     type: "direct",
@@ -194,7 +226,7 @@ export const sampleConversations: Conversation[] = [
     initials: "GN",
     lastMessage: "The files uploaded successfully.",
     timestamp: "Yesterday",
-    unread: false,
+    unread: 1,
     isOnline: false,
     lastSeen: "last seen 3 hours ago",
     type: "direct",
@@ -205,7 +237,7 @@ export const sampleConversations: Conversation[] = [
     initials: "BC",
     lastMessage: "Could you send me the updated link?",
     timestamp: "Yesterday",
-    unread: true,
+    unread: 2,
     isOnline: false,
     lastSeen: "last seen yesterday at 18:47",
     type: "direct",
@@ -216,7 +248,7 @@ export const sampleConversations: Conversation[] = [
     initials: "AW",
     lastMessage: "That made my day 😂",
     timestamp: "Tue",
-    unread: false,
+    unread: 3,
     isOnline: true,
     lastSeen: null,
     type: "direct",
@@ -227,7 +259,7 @@ export const sampleConversations: Conversation[] = [
     initials: "SP",
     lastMessage: "Let me check and get back to you.",
     timestamp: "Tue",
-    unread: false,
+    unread: 2,
     isOnline: false,
     lastSeen: "last seen Tuesday at 16:20",
     type: "direct",
@@ -238,7 +270,7 @@ export const sampleConversations: Conversation[] = [
     initials: "CE",
     lastMessage: "Are we still on for Saturday?",
     timestamp: "Tue",
-    unread: true,
+    unread: 2,
     isOnline: false,
     lastSeen: "last seen 45 minutes ago",
     type: "direct",
@@ -249,7 +281,7 @@ export const sampleConversations: Conversation[] = [
     initials: "NW",
     lastMessage: "Thanks for explaining that so clearly.",
     timestamp: "Mon",
-    unread: false,
+    unread: 1,
     isOnline: false,
     lastSeen: "last seen Monday at 20:05",
     type: "direct",
@@ -260,7 +292,7 @@ export const sampleConversations: Conversation[] = [
     initials: "VJ",
     lastMessage: "I've shared the presentation with you.",
     timestamp: "Mon",
-    unread: true,
+    unread: 1,
     isOnline: true,
     lastSeen: null,
     type: "direct",
@@ -271,7 +303,7 @@ export const sampleConversations: Conversation[] = [
     initials: "AR",
     lastMessage: "Let's discuss everything in more detail tomorrow.",
     timestamp: "Mon",
-    unread: false,
+    unread: 3,
     isOnline: false,
     lastSeen: "last seen Monday at 11:32",
     type: "direct",

@@ -8,16 +8,16 @@ type ConversationListProps = {
   selectedConversationId: string | null;
   onSelectConversation: (conversationId: string) => void;
   conversations: Conversation[];
+  onNewConversation: () => void;
 };
 
 
-export default function ConversationList(
-    {
-      selectedConversationId,
-      onSelectConversation, 
-      conversations 
-    }: ConversationListProps
-) {
+export default function ConversationList({
+  selectedConversationId,
+  onSelectConversation,
+  conversations,
+  onNewConversation,
+}: ConversationListProps) {
   return (
     <section
       aria-label="Conversations"
@@ -31,7 +31,8 @@ export default function ConversationList(
 
           <button
             type="button"
-            aria-label="New message"
+            aria-label="New conversation"
+            onClick={onNewConversation}
             className="flex size-10 items-center justify-center rounded-default bg-accent text-white transition-opacity hover:opacity-90"
           >
             <SquarePen size={19} aria-hidden="true" />
