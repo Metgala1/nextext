@@ -8,6 +8,7 @@ type ConversationItemProps = {
   unread?: number;
   active?: boolean;
   onClick?: () => void;
+  photoUrl?: string;
 };
 
 export default function ConversationItem({
@@ -18,6 +19,7 @@ export default function ConversationItem({
   unread = 0,
   active = false,
   onClick,
+  photoUrl
 }: ConversationItemProps) {
   const hasUnreadMessages = unread > 0;
 
@@ -33,10 +35,18 @@ export default function ConversationItem({
       }`}
     >
       <div
-        className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-semibold text-accent"
+        className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent/15 text-sm font-semibold text-accent"
         aria-hidden="true"
       >
-        {initials}
+        {photoUrl ? (
+          <img
+            src={photoUrl}
+            alt=""
+            className="size-full rounded-full object-cover"
+          />
+        ) : (
+          initials
+        )}
       </div>
 
       <div className="min-w-0 flex-1">

@@ -34,6 +34,7 @@ export type GroupConversation = ConversationBase & {
   participants: ConversationParticipant[];
   createdBy: string;
   description?: string;
+  photoUrl?: string;
 };
 
 export type Conversation = DirectConversation | GroupConversation;

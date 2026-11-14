@@ -28,6 +28,8 @@ import NewConversationDialog from "@/components/new-conversation-dialog";
 import NewDirectConversationDialog from "@/components/new-direct-conversation";
 import GroupDetails from "@/components/group-details";
 import AddGroupMembersDialog from "@/components/add-group-members-dialog";
+import EditGroupDescriptionDialog from "@/components/edit-group-description-dialog";
+import EditGroupPhotoDialog from "@/components/edit-photo-dialog";
 
 import { CURRENT_USER, CURRENT_USER_ID } from "@/data/users";
 
@@ -63,6 +65,33 @@ export default function Home() {
     : getDirectParticipants(selectedConversation)
   : [];
 
+  const [isEditGroupDescriptionOpen, setIsEditGroupDescriptionOpen] =
+  useState(false);
+
+  function handleSaveGroupDescription(description: string) {
+  if (!selectedConversation || selectedConversation.type !== "group") {
+    return;
+  }
+
+  if (selectedConversation.createdBy !== CURRENT_USER_ID) {
+    return;
+  }
+
+  setConversations((previous) =>
+    previous.map((conversation) =>
+      conversation.id === selectedConversation.id &&
+      conversation.type === "group"
+        ? {
+            ...conversation,
+            description,
+          }
+        : conversation
+    )
+  );
+
+  setIsEditGroupDescriptionOpen(false);
+}
+
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const availableContacts: ConversationParticipant[] =
   sampleConversations.map(
@@ -71,6 +100,8 @@ export default function Home() {
 
   const [isNewConversationOpen, setIsNewConversationOpen] =
   useState(false);
+
+  const [isEditGroupPhotoOpen, setIsEditGroupPhotoOpen] = useState(false);
 
   const [isContactDetailsOpen, setIsContactDetailsOpen] = useState(false);
 
@@ -171,13 +202,47 @@ export default function Home() {
   const [isNewDirectConversationOpen, setIsNewDirectConversationOpen] =
   useState(false);
 
+  const [memberToRemove, setMemberToRemove] =
+  useState<ConversationParticipant | null>(null);
+
+  
+
   const [isAddGroupMembersOpen, setIsAddGroupMembersOpen] = useState(false);
 
-  function handleCancelEditing() {
+function handleCancelEditing() {
     setMessageBeingEdited(null);
+}
+
+function handleSaveGroupPhoto(photo: File) {
+  if (!selectedConversation || selectedConversation.type !== "group") {
+    return;
   }
 
-  function handleRemoveGroupMember(participantId: string) {
+  if (selectedConversation.createdBy !== CURRENT_USER_ID) {
+    return;
+  }
+
+  const reader = new FileReader();
+
+  reader.onload = () => {
+    if (typeof reader.result !== "string") return;
+
+    setConversations((previous) =>
+      previous.map((conversation) =>
+        conversation.id === selectedConversation.id &&
+        conversation.type === "group"
+          ? { ...conversation, photoUrl: reader.result as string }
+          : conversation
+      )
+    );
+
+    setIsEditGroupPhotoOpen(false);
+  };
+
+  reader.readAsDataURL(photo);
+}
+
+function handleRemoveGroupMember(participantId: string) {
   if (!selectedConversation || selectedConversation.type !== "group") {
     return;
   }
@@ -188,7 +253,6 @@ export default function Home() {
 
   if (!participant) return;
 
-  // Protect the group creator and current user.
   if (
     participant.id === selectedConversation.createdBy ||
     participant.id === CURRENT_USER_ID
@@ -196,26 +260,9 @@ export default function Home() {
     return;
   }
 
-  const confirmed = window.confirm(
-    `Remove ${participant.name} from this group?`
-  );
-
-  if (!confirmed) return;
-
-  setConversations((previous) =>
-    previous.map((conversation) =>
-      conversation.id === selectedConversation.id &&
-      conversation.type === "group"
-        ? {
-            ...conversation,
-            participants: conversation.participants.filter(
-              (member) => member.id !== participantId
-            ),
-          }
-        : conversation
-    )
-  );
+  setMemberToRemove(participant);
 }
+
 
   function handleAddGroupMembers(participantIds: string[]) {
   if (!selectedConversation || selectedConversation.type !== "group") {
@@ -256,6 +303,28 @@ export default function Home() {
   if (type === "direct") {
     setIsNewDirectConversationOpen(true)
   }
+}
+
+function confirmRemoveGroupMember() {
+  if (!memberToRemove || !selectedConversation) return;
+
+  const participantId = memberToRemove.id;
+
+  setConversations((previous) =>
+    previous.map((conversation) =>
+      conversation.id === selectedConversation.id &&
+      conversation.type === "group"
+        ? {
+            ...conversation,
+            participants: conversation.participants.filter(
+              (member) => member.id !== participantId
+            ),
+          }
+        : conversation
+    )
+  );
+
+  setMemberToRemove(null);
 }
 
   function handleCreateGroup(data: {
@@ -625,6 +694,32 @@ function handleSelectDirectContact(contactId: string) {
     );
   }
 
+  function handlePromoteGroupMember(participantId: string) {
+  if (!selectedConversation || selectedConversation.type !== "group") {
+    return;
+  }
+
+  if (selectedConversation.createdBy !== CURRENT_USER_ID) {
+    return;
+  }
+
+  setConversations((previous) =>
+    previous.map((conversation) =>
+      conversation.id === selectedConversation.id &&
+      conversation.type === "group"
+        ? {
+            ...conversation,
+            participants: conversation.participants.map((participant) =>
+              participant.id === participantId
+                ? { ...participant, role: "admin" as const }
+                : participant
+            ),
+          }
+        : conversation
+    )
+  );
+}
+
   function handlePreviousSearchResult() {
     if (matchingMessages.length === 0) return;
 
@@ -981,6 +1076,11 @@ function handleSelectConversation(conversationId: string) {
               {selectedConversation ? (
                 <div className="flex flex-1 flex-col overflow-hidden">
                   <ChatHeader
+                  photoUrl={
+                      selectedConversation?.type === "group"
+                        ? selectedConversation.photoUrl
+                        : undefined
+                    }
                     isGroup={selectedConversation?.type === "group"}
                     memberCount={selectedConversationParticipants.length}
                     name={selectedConversation.name}
@@ -1213,6 +1313,10 @@ function handleSelectConversation(conversationId: string) {
             {isContactDetailsOpen && selectedConversation && (
               selectedConversation.type === "group" ? (
                 <GroupDetails
+                  onEditPhoto={() => setIsEditGroupPhotoOpen(true)}
+                  photoUrl={selectedConversation.photoUrl}
+                  onEditDescription={() => setIsEditGroupDescriptionOpen(true)}
+                  onPromoteMember={handlePromoteGroupMember}
                   onRemoveMember={handleRemoveGroupMember}
                   onAddMembers={() => setIsAddGroupMembersOpen(true)}
                   name={selectedConversation.name}
@@ -1241,6 +1345,16 @@ function handleSelectConversation(conversationId: string) {
           />
         )}
 
+        <ConfirmationModal
+          isOpen={memberToRemove !== null}
+          title="Remove group member?"
+          description={`Are you sure you want to remove ${memberToRemove?.name ?? "this member"} from this group? They will no longer be able to participate in the conversation.`}
+          confirmLabel="Remove member"
+          destructive
+          onConfirm={confirmRemoveGroupMember}
+          onCancel={() => setMemberToRemove(null)}
+        />
+
         {isNewConversationOpen && (
           <NewConversationDialog
             onClose={() => setIsNewConversationOpen(false)}
@@ -1253,6 +1367,21 @@ function handleSelectConversation(conversationId: string) {
             contacts={availableContacts}
             onClose={() => setIsNewDirectConversationOpen(false)}
             onSelectContact={handleSelectDirectContact}
+          />
+        )}
+
+        {isEditGroupDescriptionOpen && selectedConversation?.type === "group" && (
+          <EditGroupDescriptionDialog
+            initialDescription={selectedConversation.description}
+            onClose={() => setIsEditGroupDescriptionOpen(false)}
+            onSave={handleSaveGroupDescription}
+          />
+        )}
+
+        {isEditGroupPhotoOpen && selectedConversation?.type === "group" && (
+          <EditGroupPhotoDialog
+            onClose={() => setIsEditGroupPhotoOpen(false)}
+            onSave={handleSaveGroupPhoto}
           />
         )}
 

@@ -23,7 +23,8 @@ type ChatHeaderProps = {
   isBlocked: boolean;
   onToggleBlock: () => void;
   isGroup: boolean;
-  memberCount: number;    
+  memberCount: number;
+  photoUrl?: string    
   
 };
 
@@ -41,7 +42,8 @@ export default function ChatHeader({
   isBlocked,
   onToggleBlock,
   isGroup,
-  memberCount
+  memberCount,
+  photoUrl
   
 }: ChatHeaderProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -77,10 +79,18 @@ export default function ChatHeader({
   return (
     <header className="flex h-[76px] shrink-0 items-center gap-3 border-b border-border px-6">
       <div
-        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-semibold text-accent"
+        className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent/15 text-sm font-semibold text-accent"
         aria-hidden="true"
       >
-        {initials}
+        {photoUrl ? (
+          <img
+            src={photoUrl}
+            alt=""
+            className="size-full rounded-full object-cover"
+          />
+        ) : (
+          initials
+        )}
       </div>
 
       <div className="min-w-0 flex-1">

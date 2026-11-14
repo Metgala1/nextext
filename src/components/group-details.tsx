@@ -1,4 +1,4 @@
-import { X, Users, UserPlus, UserMinus } from "lucide-react";
+import { X, Users, UserPlus, UserMinus, ShieldCheck } from "lucide-react";
 import type { ConversationParticipant } from "@/data/conversation";
 import { CURRENT_USER_ID } from "@/data/users";
 
@@ -11,6 +11,10 @@ type GroupDetailsProps = {
   onClose: () => void;
   onAddMembers: () => void;
   onRemoveMember: (participantId: string) => void;
+  onPromoteMember: (participantId: string) => void;
+  onEditDescription: () => void;
+  onEditPhoto: () => void;
+  photoUrl?: string;
 };
 
 export default function GroupDetails({
@@ -21,7 +25,11 @@ export default function GroupDetails({
   createdBy,
   onClose,
   onAddMembers,
-  onRemoveMember
+  onRemoveMember,
+  onPromoteMember,
+  onEditDescription,
+  onEditPhoto,
+  photoUrl
 }: GroupDetailsProps) {
   const isCurrentUserAdmin = participants.some(
   (participant) =>
@@ -48,12 +56,27 @@ export default function GroupDetails({
       </header>
 
       <div className="flex flex-col items-center gap-3 border-b border-border px-5 py-8">
-        <div
-          aria-hidden="true"
-          className="flex size-16 items-center justify-center rounded-full bg-accent/15 text-lg font-semibold text-accent"
-        >
-          {initials}
+        <div className="mx-auto flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-elevated text-2xl font-semibold text-foreground">
+          {photoUrl ? (
+            <img
+              src={photoUrl}
+              alt={`${name} group photo`}
+              className="block size-full rounded-full object-cover"
+            />
+          ) : (
+            <span>{initials}</span>
+          )}
         </div>
+
+        {createdBy === CURRENT_USER_ID && (
+          <button
+            type="button"
+            onClick={onEditPhoto}
+            className="mt-2 text-sm font-medium text-accent transition-colors hover:opacity-80"
+          >
+            Edit photo
+          </button>
+        )}
 
         <h3 className="text-base font-semibold">
           {name}
@@ -65,9 +88,21 @@ export default function GroupDetails({
       </div>
 
       <div className="border-b border-border p-5">
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-secondary">
-          About
-        </h3>
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+            Description
+          </h3>
+
+          {createdBy === CURRENT_USER_ID && (
+            <button
+              type="button"
+              onClick={onEditDescription}
+              className="text-sm font-medium text-[#4BA6C6] transition-colors hover:text-[#69B9D4]"
+            >
+              Edit
+            </button>
+          )}
+        </div>
 
         <p className="text-sm leading-6 text-text-secondary">
           {description || "No group description yet."}
@@ -124,6 +159,18 @@ export default function GroupDetails({
                   Admin
                 </span>
               )}
+
+              {createdBy === CURRENT_USER_ID &&
+                participant.id !== CURRENT_USER_ID &&
+                participant.role !== "admin" && (
+                  <button
+                    type="button"
+                    onClick={() => onPromoteMember(participant.id)}
+                    className="text-sm font-medium text-[#4BA6C6] transition-colors hover:text-[#69B9D4]"
+                  >
+                   Make admin
+                  </button>
+                )}
 
               {isCurrentUserAdmin &&
                 participant.id !== CURRENT_USER_ID &&

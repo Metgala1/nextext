@@ -58,6 +58,11 @@ export default function ConversationList({
      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
         {conversations.map((conversation) => (
             <ConversationItem
+                photoUrl={
+                  conversation.type === "group"
+                    ? conversation.photoUrl
+                    : undefined
+                }
                 key={conversation.id}
                 name={conversation.name}
                 initials={conversation.initials}
