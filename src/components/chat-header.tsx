@@ -22,6 +22,8 @@ type ChatHeaderProps = {
   isMuted: boolean;
   isBlocked: boolean;
   onToggleBlock: () => void;
+  isGroup: boolean;
+  memberCount: number;    
   
 };
 
@@ -37,7 +39,9 @@ export default function ChatHeader({
   onBlockContact,
   isMuted,
   isBlocked,
-  onToggleBlock
+  onToggleBlock,
+  isGroup,
+  memberCount
   
 }: ChatHeaderProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -88,7 +92,11 @@ export default function ChatHeader({
           {name}
         </button>
 
-        {isOnline ? (
+        {isGroup ? (
+          <p className="mt-1 truncate text-xs text-text-secondary">
+            {memberCount} {memberCount === 1 ? "member" : "members"}
+          </p>
+        ) : isOnline ? (
           <p className="mt-1 flex items-center gap-1.5 text-xs text-green-500">
             <span
               aria-hidden="true"
@@ -98,9 +106,7 @@ export default function ChatHeader({
           </p>
         ) : (
           <p className="mt-1 truncate text-xs text-text-secondary">
-            {lastSeen
-              ? `Last seen ${lastSeen}`
-              : "Offline"}
+            {lastSeen ? `Last seen ${lastSeen}` : "Offline"}
           </p>
         )}
       </div>

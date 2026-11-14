@@ -26,8 +26,8 @@ import PinnedMessagesPanel from "@/components/pinned-message-panel";
 import CreateGroupDialog from "@/components/create-group-dialog";
 import NewConversationDialog from "@/components/new-conversation-dialog";
 import NewDirectConversationDialog from "@/components/new-direct-conversation";
-
-
+import GroupDetails from "@/components/group-details";
+import AddGroupMembersDialog from "@/components/add-group-members-dialog";
 
 import { CURRENT_USER, CURRENT_USER_ID } from "@/data/users";
 
@@ -171,9 +171,80 @@ export default function Home() {
   const [isNewDirectConversationOpen, setIsNewDirectConversationOpen] =
   useState(false);
 
+  const [isAddGroupMembersOpen, setIsAddGroupMembersOpen] = useState(false);
+
   function handleCancelEditing() {
     setMessageBeingEdited(null);
   }
+
+  function handleRemoveGroupMember(participantId: string) {
+  if (!selectedConversation || selectedConversation.type !== "group") {
+    return;
+  }
+
+  const participant = selectedConversation.participants.find(
+    (member) => member.id === participantId
+  );
+
+  if (!participant) return;
+
+  // Protect the group creator and current user.
+  if (
+    participant.id === selectedConversation.createdBy ||
+    participant.id === CURRENT_USER_ID
+  ) {
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `Remove ${participant.name} from this group?`
+  );
+
+  if (!confirmed) return;
+
+  setConversations((previous) =>
+    previous.map((conversation) =>
+      conversation.id === selectedConversation.id &&
+      conversation.type === "group"
+        ? {
+            ...conversation,
+            participants: conversation.participants.filter(
+              (member) => member.id !== participantId
+            ),
+          }
+        : conversation
+    )
+  );
+}
+
+  function handleAddGroupMembers(participantIds: string[]) {
+  if (!selectedConversation || selectedConversation.type !== "group") {
+    return;
+  }
+
+  const newMembers = availableContacts
+    .filter((contact) => participantIds.includes(contact.id))
+    .map((contact) => ({
+      ...contact,
+      role: "member" as const,
+    }));
+
+  if (newMembers.length === 0) return;
+
+  setConversations((previous) =>
+    previous.map((conversation) =>
+      conversation.id === selectedConversation.id &&
+      conversation.type === "group"
+        ? {
+            ...conversation,
+            participants: [...conversation.participants, ...newMembers],
+          }
+        : conversation
+    )
+  );
+
+  setIsAddGroupMembersOpen(false);
+}
 
   function handleSelectConversationType(type: "direct" | "group") {
   setIsNewConversationOpen(false);
@@ -210,7 +281,6 @@ export default function Home() {
     participants,
     createdBy: CURRENT_USER_ID,
   });
-
   setConversations((previous) => [newGroup, ...previous]);
 
   setConversationMessages((previous) => ({
@@ -911,6 +981,8 @@ function handleSelectConversation(conversationId: string) {
               {selectedConversation ? (
                 <div className="flex flex-1 flex-col overflow-hidden">
                   <ChatHeader
+                    isGroup={selectedConversation?.type === "group"}
+                    memberCount={selectedConversationParticipants.length}
                     name={selectedConversation.name}
                     initials={selectedConversation.initials}
                     onNameClick={() => setIsContactDetailsOpen(true)}
@@ -1139,11 +1211,24 @@ function handleSelectConversation(conversationId: string) {
             </section>
 
             {isContactDetailsOpen && selectedConversation && (
-              <ContactDetails
-                name={selectedConversation.name}
-                initials={selectedConversation.initials}
-                onClose={() => setIsContactDetailsOpen(false)}
-              />
+              selectedConversation.type === "group" ? (
+                <GroupDetails
+                  onRemoveMember={handleRemoveGroupMember}
+                  onAddMembers={() => setIsAddGroupMembersOpen(true)}
+                  name={selectedConversation.name}
+                  initials={selectedConversation.initials}
+                  description={selectedConversation.description}
+                  participants={selectedConversationParticipants}
+                  createdBy={selectedConversation.createdBy}
+                  onClose={() => setIsContactDetailsOpen(false)}
+                />
+              ) : (
+                <ContactDetails
+                  name={selectedConversation.name}
+                  initials={selectedConversation.initials}
+                  onClose={() => setIsContactDetailsOpen(false)}
+                />
+              )
             )}
           </>
         )}
@@ -1168,6 +1253,17 @@ function handleSelectConversation(conversationId: string) {
             contacts={availableContacts}
             onClose={() => setIsNewDirectConversationOpen(false)}
             onSelectContact={handleSelectDirectContact}
+          />
+        )}
+
+        {isAddGroupMembersOpen && selectedConversation?.type === "group" && (
+          <AddGroupMembersDialog
+            contacts={availableContacts}
+            existingMemberIds={selectedConversationParticipants.map(
+              (participant) => participant.id
+            )}
+            onClose={() => setIsAddGroupMembersOpen(false)}
+            onAddMembers={handleAddGroupMembers}
           />
         )}
       </main>
