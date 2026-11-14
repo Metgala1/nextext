@@ -35,6 +35,7 @@ export type GroupConversation = ConversationBase & {
   createdBy: string;
   description?: string;
   photoUrl?: string;
+  isMuted?: boolean
 };
 
 export type Conversation = DirectConversation | GroupConversation;

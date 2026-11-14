@@ -1,4 +1,5 @@
 "use client";
+import { BellOff } from "lucide-react";
 
 type ConversationItemProps = {
   name: string;
@@ -9,6 +10,7 @@ type ConversationItemProps = {
   active?: boolean;
   onClick?: () => void;
   photoUrl?: string;
+  isMuted?: boolean;
 };
 
 export default function ConversationItem({
@@ -19,7 +21,8 @@ export default function ConversationItem({
   unread = 0,
   active = false,
   onClick,
-  photoUrl
+  photoUrl,
+  isMuted
 }: ConversationItemProps) {
   const hasUnreadMessages = unread > 0;
 
@@ -58,6 +61,13 @@ export default function ConversationItem({
           <span className="shrink-0 text-xs text-text-secondary">
             {timestamp}
           </span>
+          {isMuted && (
+            <BellOff
+              size={14}
+              className="shrink-0 text-secondary"
+              aria-label="Notifications muted"
+            />
+          )}
         </div>
 
         <div className="flex items-center justify-between gap-2">

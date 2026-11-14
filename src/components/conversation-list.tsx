@@ -71,6 +71,11 @@ export default function ConversationList({
                 unread={conversation.unread}
                 active={selectedConversationId === conversation.id}
                 onClick={() => onSelectConversation(conversation.id)}
+                isMuted={
+                  conversation.type === "group"
+                    ? conversation.isMuted
+                    : false
+                }
             />
         ))}
     </div>

@@ -30,6 +30,7 @@ import GroupDetails from "@/components/group-details";
 import AddGroupMembersDialog from "@/components/add-group-members-dialog";
 import EditGroupDescriptionDialog from "@/components/edit-group-description-dialog";
 import EditGroupPhotoDialog from "@/components/edit-photo-dialog";
+import EditGroupNameDialog from "@/components/edit-group-name-dialog";
 
 import { CURRENT_USER, CURRENT_USER_ID } from "@/data/users";
 
@@ -59,6 +60,7 @@ export default function Home() {
     (chat) => chat.id === selectedConversationId,
   );
 
+const [isEditGroupNameOpen, setIsEditGroupNameOpen] = useState(false);
  const selectedConversationParticipants = selectedConversation
   ? selectedConversation.type === "group"
     ? selectedConversation.participants ?? []
@@ -182,6 +184,9 @@ export default function Home() {
   const [activeNavigationItem, setActiveNavigationItem] =
     useState("Messages");
 
+  const [isLeaveGroupConfirmationOpen, setIsLeaveGroupConfirmationOpen] =
+  useState(false);
+
   const [pendingMessageId, setPendingMessageId] =
     useState<string | null>(null);
 
@@ -213,6 +218,49 @@ function handleCancelEditing() {
     setMessageBeingEdited(null);
 }
 
+const handleSaveGroupName = (name: string) => {
+  if (!selectedConversation || selectedConversation.type !== "group") {
+    return;
+  }
+
+  if (selectedConversation.createdBy !== CURRENT_USER_ID) {
+    return;
+  }
+
+  setConversations((prev) =>
+    prev.map((conversation) =>
+      conversation.id === selectedConversation.id &&
+      conversation.type === "group"
+        ? {
+            ...conversation,
+            name,
+            initials: name.slice(0, 2).toUpperCase(),
+          }
+        : conversation
+    )
+  );
+
+  setIsEditGroupNameOpen(false);
+};
+
+const handleToggleGroupMute = () => {
+  if (!selectedConversation || selectedConversation.type !== "group") {
+    return;
+  }
+
+  setConversations((prev) =>
+    prev.map((conversation) =>
+      conversation.id === selectedConversation.id &&
+      conversation.type === "group"
+        ? {
+            ...conversation,
+            isMuted: !conversation.isMuted,
+          }
+        : conversation
+    )
+  );
+};
+
 function handleSaveGroupPhoto(photo: File) {
   if (!selectedConversation || selectedConversation.type !== "group") {
     return;
@@ -241,6 +289,40 @@ function handleSaveGroupPhoto(photo: File) {
 
   reader.readAsDataURL(photo);
 }
+
+const handleLeaveGroup = () => {
+  if (!selectedConversation || selectedConversation.type !== "group") {
+    return;
+  }
+
+  if (selectedConversation.createdBy === CURRENT_USER_ID) {
+    return;
+  }
+
+  setConversations((prev) =>
+    prev.map((conversation) =>
+      conversation.id === selectedConversation.id &&
+      conversation.type === "group"
+        ? {
+            ...conversation,
+            participants: conversation.participants.filter(
+              (participant) => participant.id !== CURRENT_USER_ID
+            ),
+          }
+        : conversation
+    )
+  );
+
+  const nextConversation = conversations.find(
+    (conversation) => conversation.id !== selectedConversation.id
+  );
+
+  setIsLeaveGroupConfirmationOpen(false);
+
+  if (nextConversation) {
+    handleSelectConversation(nextConversation.id);
+  }
+};
 
 function handleRemoveGroupMember(participantId: string) {
   if (!selectedConversation || selectedConversation.type !== "group") {
@@ -1076,6 +1158,17 @@ function handleSelectConversation(conversationId: string) {
               {selectedConversation ? (
                 <div className="flex flex-1 flex-col overflow-hidden">
                   <ChatHeader
+                  onViewPinnedMessages={() => setIsPinnedMessagesOpen(true)}
+                  isGroupMuted={
+                    selectedConversation?.type === "group"
+                      ? selectedConversation.isMuted ?? false
+                      : false
+                  }
+                  onToggleGroupMute={handleToggleGroupMute}
+                  isGroupCreator={
+                    selectedConversation?.type === "group" &&
+                    selectedConversation.createdBy === CURRENT_USER_ID
+                  }
                   photoUrl={
                       selectedConversation?.type === "group"
                         ? selectedConversation.photoUrl
@@ -1102,6 +1195,7 @@ function handleSelectConversation(conversationId: string) {
                       selectedConversation.id,
                     )}
                     onToggleBlock={toggleBlockContact}
+                    onLeaveGroup={() => setIsLeaveGroupConfirmationOpen(true)}
                   />
 
                   {mutedConversationIds.includes(
@@ -1313,6 +1407,10 @@ function handleSelectConversation(conversationId: string) {
             {isContactDetailsOpen && selectedConversation && (
               selectedConversation.type === "group" ? (
                 <GroupDetails
+                  isMuted={selectedConversation.isMuted ?? false}
+                  onToggleMute={handleToggleGroupMute}
+                  onLeaveGroup={() => setIsLeaveGroupConfirmationOpen(true)}
+                  onEditName={() => setIsEditGroupNameOpen(true)}
                   onEditPhoto={() => setIsEditGroupPhotoOpen(true)}
                   photoUrl={selectedConversation.photoUrl}
                   onEditDescription={() => setIsEditGroupDescriptionOpen(true)}
@@ -1385,6 +1483,15 @@ function handleSelectConversation(conversationId: string) {
           />
         )}
 
+        {selectedConversation?.type === "group" && (
+          <EditGroupNameDialog
+            isOpen={isEditGroupNameOpen}
+            initialName={selectedConversation.name}
+            onSave={handleSaveGroupName}
+            onClose={() => setIsEditGroupNameOpen(false)}
+          />
+        )}
+
         {isAddGroupMembersOpen && selectedConversation?.type === "group" && (
           <AddGroupMembersDialog
             contacts={availableContacts}
@@ -1395,6 +1502,16 @@ function handleSelectConversation(conversationId: string) {
             onAddMembers={handleAddGroupMembers}
           />
         )}
+
+        <ConfirmationModal
+        isOpen={isLeaveGroupConfirmationOpen}
+        title="Leave this group?"
+        description="You will no longer receive messages or updates from this group."
+        confirmLabel="Leave group"
+        destructive
+        onConfirm={handleLeaveGroup}
+        onCancel={() => setIsLeaveGroupConfirmationOpen(false)}
+      />
       </main>
     </AppShell>
   );

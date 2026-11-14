@@ -2,6 +2,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import ConversationMenu from "@/components/conversation-menu";
+import GroupConversationMenu from "@/components/group-conversation-menu";
 
 import {
   Phone,
@@ -24,7 +25,12 @@ type ChatHeaderProps = {
   onToggleBlock: () => void;
   isGroup: boolean;
   memberCount: number;
-  photoUrl?: string    
+  photoUrl?: string;
+  onLeaveGroup: () => void;
+  isGroupCreator: boolean;
+  isGroupMuted: boolean;
+  onToggleGroupMute: () => void;
+  onViewPinnedMessages: () => void;
   
 };
 
@@ -43,7 +49,12 @@ export default function ChatHeader({
   onToggleBlock,
   isGroup,
   memberCount,
-  photoUrl
+  photoUrl,
+  onLeaveGroup,
+  isGroupCreator,
+  isGroupMuted,
+  onToggleGroupMute,
+  onViewPinnedMessages,
   
 }: ChatHeaderProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -155,25 +166,55 @@ export default function ChatHeader({
             <EllipsisVertical size={20} aria-hidden="true" />
         </button>
 
-                {isMenuOpen && (
-                    <ConversationMenu
-                    onViewDetails={() => {
-                        setIsMenuOpen(false);
-                        onNameClick();
-                    }}
-                    onSearch={() => {
-                        setIsMenuOpen(false);
-                        onSearch();
-                    }}
-                    onToggleMute={onToggleMute}
-                    onClearConversation={onClearConversation}
-                    onBlockContact={onBlockContact}
-                    isMuted={isMuted}
-                    isBlocked={isBlocked}
-                    onToggleBlock={onToggleBlock}
-
-                    />
-                )}
+          {isMenuOpen && (
+            isGroup ? (
+              <GroupConversationMenu
+                isCreator={isGroupCreator}
+                onViewDetails={() => {
+                  setIsMenuOpen(false);
+                  onNameClick();
+                }}
+                onSearch={() => {
+                  setIsMenuOpen(false);
+                  onSearch();
+                }}
+                onToggleMute={() => {
+                  setIsMenuOpen(false);
+                  onToggleGroupMute();
+                }}
+                onClearConversation={() => {
+                  setIsMenuOpen(false);
+                  onClearConversation();
+                }}
+                onLeaveGroup={() => {
+                  setIsMenuOpen(false);
+                  onLeaveGroup();
+                }}
+                isMuted={isGroupMuted}
+                onViewPinnedMessages={() => {
+                  setIsMenuOpen(false);
+                  onViewPinnedMessages();
+                }}
+              />
+            ) : (
+              <ConversationMenu
+                onViewDetails={() => {
+                  setIsMenuOpen(false);
+                  onNameClick();
+                }}
+                onSearch={() => {
+                  setIsMenuOpen(false);
+                  onSearch();
+                }}
+                onToggleMute={onToggleMute}
+                onClearConversation={onClearConversation}
+                onBlockContact={onBlockContact}
+                isMuted={isMuted}
+                isBlocked={isBlocked}
+                onToggleBlock={onToggleBlock}
+              />
+            )
+          )}
         </div>
 
       </div>
