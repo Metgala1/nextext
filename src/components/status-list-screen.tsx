@@ -1,7 +1,6 @@
-
 "use client";
 
-import { Plus, Image as ImageIcon, Video } from "lucide-react";
+import { Plus, Image as ImageIcon, Video, Settings2 } from "lucide-react";
 import type { UserStatusGroup } from "@/data/status";
 import { hasUnviewedStatus } from "@/lib/status-utils";
 
@@ -10,6 +9,7 @@ type StatusListScreenProps = {
   currentUserId: string;
   onCreateStatus: () => void;
   onSelectStatus: (group: UserStatusGroup) => void;
+  onOpenPrivacy: () => void;
 };
 
 function getLatestStatusTime(group: UserStatusGroup) {
@@ -26,6 +26,7 @@ export default function StatusListScreen({
   currentUserId,
   onCreateStatus,
   onSelectStatus,
+  onOpenPrivacy,
 }: StatusListScreenProps) {
   const myStatus = statusGroups.find((group) => group.isCurrentUser);
 
@@ -54,9 +55,7 @@ export default function StatusListScreen({
       >
         <div
           className={`flex size-12 shrink-0 items-center justify-center rounded-full p-[2px] ${
-            hasUnviewed
-              ? "bg-accent"
-              : "bg-text-secondary/40"
+            hasUnviewed ? "bg-accent" : "bg-text-secondary/40"
           }`}
         >
           <div className="flex size-full items-center justify-center rounded-full bg-surface text-sm font-semibold text-foreground">
@@ -78,7 +77,8 @@ export default function StatusListScreen({
         </div>
 
         <span className="text-xs text-text-secondary">
-          {group.updates.length} {group.updates.length === 1 ? "update" : "updates"}
+          {group.updates.length}{" "}
+          {group.updates.length === 1 ? "update" : "updates"}
         </span>
       </button>
     );
@@ -86,11 +86,23 @@ export default function StatusListScreen({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
-      <header className="border-b border-border px-6 py-5">
-        <h1 className="text-xl font-semibold text-foreground">Status</h1>
-        <p className="mt-1 text-sm text-text-secondary">
-          Share moments and see what your contacts are up to.
-        </p>
+      <header className="flex items-start justify-between gap-3 border-b border-border px-6 py-5">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold text-foreground">Status</h1>
+          <p className="mt-1 text-sm text-text-secondary">
+            Share moments and see what your contacts are up to.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onOpenPrivacy}
+          aria-label="Status privacy settings"
+          title="Status privacy"
+          className="shrink-0 rounded-lg p-2 text-[#a3aab3] transition hover:bg-white/10 hover:text-white"
+        >
+          <Settings2 size={20} />
+        </button>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -99,52 +111,50 @@ export default function StatusListScreen({
             My status
           </h2>
 
-                    
-            <button
+          <button
             type="button"
             onClick={() => {
-                if (myStatus) {
+              if (myStatus) {
                 onSelectStatus(myStatus);
-                } else {
+              } else {
                 onCreateStatus();
-                }
+              }
             }}
             className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors hover:bg-surface-elevated"
-            >
+          >
             <div
-                className={`relative flex size-12 shrink-0 items-center justify-center rounded-full p-[2px] text-sm font-semibold ${
+              className={`relative flex size-12 shrink-0 items-center justify-center rounded-full p-[2px] text-sm font-semibold ${
                 myStatus ? "bg-accent" : "bg-surface-elevated"
-                }`}
+              }`}
             >
-                <div className="flex size-full items-center justify-center rounded-full bg-surface text-foreground">
+              <div className="flex size-full items-center justify-center rounded-full bg-surface text-foreground">
                 ME
-                </div>
+              </div>
 
-                <span
+              <span
                 role="button"
                 aria-label="Add status"
                 onClick={(event) => {
-                    event.stopPropagation();
-                    onCreateStatus();
+                  event.stopPropagation();
+                  onCreateStatus();
                 }}
                 className="absolute -right-1 -bottom-1 flex size-5 items-center justify-center rounded-full border-2 border-background bg-accent text-white"
-                >
+              >
                 <Plus size={13} />
-                </span>
+              </span>
             </div>
 
             <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-foreground">
+              <p className="text-sm font-semibold text-foreground">
                 My status
-                </p>
-                <p className="mt-1 text-xs text-text-secondary">
+              </p>
+              <p className="mt-1 text-xs text-text-secondary">
                 {myStatus
-                    ? `${myStatus.updates.length} updates · Tap to view`
-                    : "Tap to add a status update"}
-                </p>
+                  ? `${myStatus.updates.length} updates · Tap to view`
+                  : "Tap to add a status update"}
+              </p>
             </div>
-            </button>
-
+          </button>
         </section>
 
         {recentStatuses.length > 0 && (
@@ -173,7 +183,7 @@ export default function StatusListScreen({
               No updates yet
             </p>
             <p className="mt-2 text-xs text-text-secondary">
-              When your contacts share updates, they'll appear here.
+              When your contacts share updates, they&apos;ll appear here.
             </p>
           </div>
         )}

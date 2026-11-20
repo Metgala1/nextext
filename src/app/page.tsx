@@ -27,9 +27,19 @@ import StatusListScreen from "@/components/status-list-screen";
 import { sampleStatusUpdates } from "@/data/status-samples";
 import { groupStatusUpdates } from "@/lib/status-utils";
 import CreateTextStatus from "@/components/create-text-status";
-import type { StatusUpdate, StatusBackground } from "@/data/status";
+import type { 
+  StatusUpdate,
+  StatusBackground ,
+  StatusReaction,
+  UserStatusGroup,
+  StatusPrivacySettings
+} from "@/data/status";
+
+import { sampleUsers } from "@/data/users";
+
+import { canViewStatus } from "@/lib/status-privacy";
 import StatusViewer from "@/components/status-viewer";
-import type { UserStatusGroup } from "@/data/status";
+
 
 
 
@@ -53,6 +63,7 @@ import BroadcastDetailScreen from "@/components/broadcast-detail-screen";
 import RenameBroadcastDialog from "@/components/rename-broadcast-dialog";
 import EditBroadcastRecipientsDialog from "@/components/edit-broadcast-recipients-dialog";
 import DeleteBroadcastDialog from "@/components/delete-broadcast-dialog";
+import StatusPrivacyScreen from "@/components/status-privacy-screen";
 
 import { CURRENT_USER, CURRENT_USER_ID } from "@/data/users";
 
@@ -276,6 +287,9 @@ const [statusUpdates, setStatusUpdates] =
 const [isCreatingTextStatus, setIsCreatingTextStatus] =
   useState(false);
   const [currentTime, setCurrentTime] = useState<number | null>(null);
+ 
+const [selectedStatusGroup, setSelectedStatusGroup] =
+  useState<UserStatusGroup | null>(null);
 
 const statusGroups =
   currentTime === null
@@ -285,30 +299,49 @@ const statusGroups =
         CURRENT_USER_ID,
         currentTime
       );
-const [selectedStatusGroup, setSelectedStatusGroup] =
-  useState<UserStatusGroup | null>(null);
-function handlePublishTextStatus(
-  content: string,
-  background: StatusBackground
-) {
-  const now = Date.now();
 
-  const newStatus: StatusUpdate = {
-    id: crypto.randomUUID(),
-    authorId: CURRENT_USER_ID,
-    authorName: "You",
-    authorInitials: "ME",
-    type: "text",
-    content,
-    background,
-    createdAt: new Date(now).toISOString(),
-    expiresAt: new Date(now + 24 * 60 * 60 * 1000).toISOString(),
-    viewedBy: [],
-  };
+const activeStatusGroup = selectedStatusGroup
+  ? statusGroups.find(
+      (group) => group.authorId === selectedStatusGroup.authorId
+    ) ?? null
+  : null;
 
-  setStatusUpdates((previous) => [...previous, newStatus]);
-  setIsCreatingTextStatus(false);
-}
+const [statusPrivacy, setStatusPrivacy] =
+  useState<StatusPrivacySettings>({
+    mode: "my-contacts",
+    excludedContactIds: [],
+    allowedContactIds: [],
+  });
+
+const [isStatusPrivacyOpen, setIsStatusPrivacyOpen] = useState(false);
+const handlePublishTextStatus = useCallback(
+  (content: string, background: StatusBackground) => {
+    const now = Date.now();
+
+    const newStatus: StatusUpdate = {
+      id: crypto.randomUUID(),
+      authorId: CURRENT_USER_ID,
+      authorName: CURRENT_USER.name,
+      authorInitials: CURRENT_USER.initials,
+      type: "text",
+      content,
+      createdAt: new Date(now).toISOString(),
+      expiresAt: new Date(now + 24 * 60 * 60 * 1000).toISOString(),
+      viewedBy: [],
+      background,
+
+      audience: {
+        ...statusPrivacy,
+        excludedContactIds: [...statusPrivacy.excludedContactIds],
+        allowedContactIds: [...statusPrivacy.allowedContactIds],
+      },
+    };
+
+    setStatusUpdates((previous) => [...previous, newStatus]);
+    setIsCreatingTextStatus(false);
+  },
+  [statusPrivacy]
+);
 
 const handleViewStatus = useCallback((statusId: string) => {
   setStatusUpdates((previous) => {
@@ -337,6 +370,67 @@ const handleViewStatus = useCallback((statusId: string) => {
     );
   });
 }, []);
+
+const getVisibleMyStatuses = useCallback(
+  (viewerId: string) => {
+    return statusUpdates.filter((status) => {
+      if (status.authorId !== CURRENT_USER_ID) {
+        return false;
+      }
+
+      // Existing sample statuses without snapshots use the default audience.
+      const audience =
+        status.audience ?? {
+          mode: "my-contacts" as const,
+          excludedContactIds: [],
+          allowedContactIds: [],
+        };
+
+      return canViewStatus(viewerId, audience);
+    });
+  },
+  [statusUpdates]
+);
+
+const handleStatusReaction = useCallback(
+  (statusId: string, emoji: string) => {
+    setStatusUpdates((previousUpdates) =>
+      previousUpdates.map((status) => {
+        if (status.id !== statusId) {
+          return status;
+        }
+
+        const existingReaction = status.reactions?.find(
+          (reaction) => reaction.userId === CURRENT_USER_ID
+        );
+
+        // Selecting the same emoji removes the reaction.
+        if (existingReaction?.emoji === emoji) {
+          return {
+            ...status,
+            reactions: status.reactions?.filter(
+              (reaction) => reaction.userId !== CURRENT_USER_ID
+            ),
+          };
+        }
+
+        // Otherwise, add or replace the current user's reaction.
+        const otherReactions = (status.reactions ?? []).filter(
+          (reaction) => reaction.userId !== CURRENT_USER_ID
+        );
+
+        return {
+          ...status,
+          reactions: [
+            ...otherReactions,
+            { userId: CURRENT_USER_ID, emoji },
+          ],
+        };
+      })
+    );
+  },
+  []
+);
 
   function handleUpdateBroadcastRecipients(recipientIds: string[]) {
     if (!selectedBroadcast) return;
@@ -1439,7 +1533,10 @@ useEffect(() => {
         <NavigationRail
           onCreateGroup={() => setIsCreateGroupOpen(true)}
           activeItem={activeNavigationItem}
-          onNavigate={setActiveNavigationItem}
+          onNavigate={(item) => {
+            setIsStatusPrivacyOpen(false);
+            setActiveNavigationItem(item);
+          }}
           onOpenStarredMessages={handleOpenStarredMessages}
         />
 
@@ -1468,15 +1565,17 @@ useEffect(() => {
                   statusGroups={statusGroups}
                   currentUserId={CURRENT_USER_ID}
                   onCreateStatus={() => setIsCreatingTextStatus(true)}
-                  onSelectStatus={(group) => setSelectedStatusGroup(group)}
+                  onSelectStatus={setSelectedStatusGroup}
+                  onOpenPrivacy={() => setIsStatusPrivacyOpen(true)}
                 />
               )}
 
-              {selectedStatusGroup && (
+              {activeStatusGroup !== null && (
                 <StatusViewer
+                  onReact={handleStatusReaction}
                   onReply={handleStatusReply}
                   onViewStatus={handleViewStatus}
-                  group={selectedStatusGroup}
+                  group={activeStatusGroup}
                   onClose={() => setSelectedStatusGroup(null)}
                 />
               )}
@@ -1903,6 +2002,18 @@ useEffect(() => {
             onClose={() => setIsDeleteBroadcastOpen(false)}
             onConfirm={handleDeleteBroadcast}
           />
+        )}
+
+        {isStatusPrivacyOpen && (
+          <div className="fixed inset-0 z-[100]">
+           <StatusPrivacyScreen
+              settings={statusPrivacy}
+              contacts={sampleUsers}
+              getVisibleStatuses={getVisibleMyStatuses}
+              onSave={setStatusPrivacy}
+              onBack={() => setIsStatusPrivacyOpen(false)}
+            />
+          </div>
         )}
 
         <ConfirmationModal

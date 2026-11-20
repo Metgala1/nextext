@@ -1,25 +1,28 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { UserStatusGroup } from "@/data/status";
+import type { UserStatusGroup, StatusUpdate } from "@/data/status";
 import { X, MoreHorizontal, Eye, Send } from "lucide-react";
 import StatusViewersPanel from "@/components/status-viewers-panel";
-import { StatusUpdate } from "@/data/status";
+import { CURRENT_USER_ID } from "@/data/users";
 
 const STATUS_DURATION = 5000;
+const STATUS_REACTIONS = ["❤️", "😂", "😮", "😢", "🙏", "🔥"];
 
 type StatusViewerProps = {
   group: UserStatusGroup;
   onClose: () => void;
   onViewStatus: (statusId: string) => void;
   onReply: (status: StatusUpdate, message: string) => void;
+  onReact: (statusId: string, emoji: string) => void;
 };
 
 export default function StatusViewer({
   group,
   onClose,
   onViewStatus,
-  onReply
+  onReply,
+  onReact,
 }: StatusViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isViewersOpen, setIsViewersOpen] = useState(false);
@@ -54,19 +57,18 @@ export default function StatusViewer({
 
     const message = replyText.trim();
 
-    if (!message) return;
+    if (!message || !currentUpdate) return;
 
     onReply(currentUpdate, message);
     setReplyText("");
-
-    setReplyText("");
   }
 
-  // Reset progress whenever the status changes.
+  // Reset progress (and any half-typed reply) whenever the status changes.
   // Declared before the timer effect so it runs first.
   useEffect(() => {
     elapsedRef.current = 0;
     setProgress(0);
+    setReplyText("");
   }, [currentIndex]);
 
   // Timer: advances the status, pauses while isPaused is true
@@ -133,6 +135,20 @@ export default function StatusViewer({
 
   // Early return only AFTER all hooks
   if (!currentUpdate) return null;
+
+  // Reaction counts, e.g. { "❤️": 3, "🔥": 1 }
+  const reactionCounts = (currentUpdate.reactions ?? []).reduce<
+    Record<string, number>
+  >((counts, reaction) => {
+    counts[reaction.emoji] = (counts[reaction.emoji] ?? 0) + 1;
+    return counts;
+  }, {});
+
+  const myReaction = currentUpdate.reactions?.find(
+    (reaction) => reaction.userId === CURRENT_USER_ID
+  )?.emoji;
+
+  const hasReactions = Object.keys(reactionCounts).length > 0;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black">
@@ -225,33 +241,92 @@ export default function StatusViewer({
           )}
         </main>
 
-        {/* Reply input */}
-        {!group.isCurrentUser && (
-          <form
-            onSubmit={handleReplySubmit}
-            className="absolute bottom-5 left-5 right-5 z-30 flex items-center gap-3"
-          >
-            <input
-              type="text"
-              value={replyText}
-              onChange={(event) => setReplyText(event.target.value)}
-              placeholder="Reply to status..."
-              maxLength={1000}
-              className="h-12 min-w-0 flex-1 rounded-xl border border-white/20 bg-white/10 px-4 text-sm text-white outline-none placeholder:text-white/60 focus:border-white/50"
-            />
+        {/*
+          Footer: lives in the normal flex flow (so the status content shrinks
+          to make room) and sits above the navigation zones with z-30.
+        */}
+        <footer className="relative z-30 flex flex-col gap-3 bg-[#111315] px-5 pt-3 pb-5">
+          {/* Reaction counts (visible to everyone) */}
+          {hasReactions && (
+            <div className="flex flex-wrap justify-center gap-2">
+              {Object.entries(reactionCounts).map(([emoji, count]) => (
+                <span
+                  key={emoji}
+                  className={`rounded-full px-3 py-1 text-sm text-white ${
+                    emoji === myReaction
+                      ? "bg-[#4BA6C6]/25 ring-1 ring-[#4BA6C6]"
+                      : "bg-white/10"
+                  }`}
+                >
+                  {emoji} {count}
+                </span>
+              ))}
+            </div>
+          )}
 
+          {group.isCurrentUser ? (
+            // Your own status: show the views button
             <button
-              type="submit"
-              disabled={!replyText.trim()}
-              aria-label="Send reply"
-              className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-[#4BA6C6] text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              type="button"
+              onClick={() => setIsViewersOpen(true)}
+              className="mx-auto flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm text-white transition-colors hover:bg-white/20"
             >
-              <Send size={18} />
+              <Eye size={16} />
+              {currentUpdate.viewedBy.length} views
             </button>
-          </form>
-        )}
+          ) : (
+            // Someone else's status: react and reply
+            <>
+              <div className="flex items-center justify-center gap-3">
+                {STATUS_REACTIONS.map((emoji) => {
+                  const isSelected = emoji === myReaction;
 
-        {/* Navigation zones */}
+                  return (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => onReact(currentUpdate.id, emoji)}
+                      aria-label={`React with ${emoji}`}
+                      aria-pressed={isSelected}
+                      className={`flex size-10 items-center justify-center rounded-full text-xl transition ${
+                        isSelected
+                          ? "scale-110 bg-[#4BA6C6]/25 ring-2 ring-[#4BA6C6]"
+                          : "bg-white/10 hover:bg-white/20"
+                      }`}
+                    >
+                      {emoji}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <form
+                onSubmit={handleReplySubmit}
+                className="flex items-center gap-3"
+              >
+                <input
+                  type="text"
+                  value={replyText}
+                  onChange={(event) => setReplyText(event.target.value)}
+                  placeholder="Reply to status..."
+                  maxLength={1000}
+                  className="h-12 min-w-0 flex-1 rounded-xl border border-white/20 bg-white/10 px-4 text-sm text-white outline-none placeholder:text-white/60 focus:border-white/50"
+                />
+
+                <button
+                  type="submit"
+                  disabled={!replyText.trim()}
+                  aria-label="Send reply"
+                  className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-[#4BA6C6] text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Send size={18} />
+                </button>
+              </form>
+            </>
+          )}
+        </footer>
+
+        {/* Navigation zones (z-10, below header and footer) */}
         <div className="absolute inset-0 z-10 flex">
           <button
             type="button"
@@ -269,27 +344,17 @@ export default function StatusViewer({
             className="h-full w-1/3"
           />
         </div>
+
+        {/* Viewers panel */}
+        {isViewersOpen && (
+          <div className="absolute inset-0 z-40 bg-background">
+            <StatusViewersPanel
+              status={currentUpdate}
+              onBack={() => setIsViewersOpen(false)}
+            />
+          </div>
+        )}
       </div>
-
-      {group.isCurrentUser && (
-        <button
-          type="button"
-          onClick={() => setIsViewersOpen(true)}
-          className="absolute bottom-5 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm text-white transition-colors hover:bg-white/20"
-        >
-          <Eye size={16} />
-          {currentUpdate.viewedBy.length} views
-        </button>
-      )}
-
-      {isViewersOpen && (
-        <div className="absolute inset-0 z-40 bg-background">
-          <StatusViewersPanel
-            status={currentUpdate}
-            onBack={() => setIsViewersOpen(false)}
-          />
-        </div>
-      )}
     </div>
   );
 }

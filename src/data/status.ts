@@ -13,6 +13,18 @@ export type StatusUpdate = {
   viewedBy: string[];
   reactions?: StatusReaction[];
   background?: StatusBackground;
+  audience?: StatusPrivacySettings;
+};
+
+export type StatusPrivacyMode =
+  | "my-contacts"
+  | "my-contacts-except"
+  | "only-share-with";
+
+export type StatusPrivacySettings = {
+  mode: StatusPrivacyMode;
+  excludedContactIds: string[];
+  allowedContactIds: string[];
 };
 
 export type StatusReaction = {
