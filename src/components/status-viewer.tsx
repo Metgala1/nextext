@@ -73,6 +73,13 @@ export default function StatusViewer({
 
   // Timer: advances the status, pauses while isPaused is true
   useEffect(() => {
+    setProgress(0);
+
+    // Let videos control their own playback and progress.
+    if (currentUpdate.type === "video" && currentUpdate.mediaUrl) {
+    return;
+    }
+
     if (isPaused) return;
 
     const startTime = Date.now() - elapsedRef.current;
@@ -224,21 +231,66 @@ export default function StatusViewer({
           }}
         >
           {currentUpdate.type === "text" ? (
-            <p className="max-w-xl whitespace-pre-wrap text-center text-2xl font-semibold leading-relaxed md:text-4xl">
-              {currentUpdate.content}
-            </p>
-          ) : (
-            <div className="text-center">
-              <p className="text-sm opacity-70">
-                {currentUpdate.type === "image"
-                  ? "Image preview"
-                  : "Video preview"}
-              </p>
-              <p className="mt-2 text-xs opacity-50">
-                Media rendering will be implemented next.
-              </p>
+            <div
+                className="flex h-full w-full items-center justify-center p-8"
+                style={{
+                backgroundColor:
+                    currentUpdate.background?.background ?? "#173F5F",
+                color:
+                    currentUpdate.background?.foreground ?? "#FFFFFF",
+                }}
+            >
+                <p className="max-w-xl text-center text-2xl font-semibold leading-relaxed">
+                {currentUpdate.content}
+                </p>
             </div>
-          )}
+            ) : currentUpdate.type === "image" ? (
+            <div className="relative flex h-full w-full items-center justify-center bg-black">
+                {currentUpdate.mediaUrl && (
+                    <img
+                    src={currentUpdate.mediaUrl}
+                    alt={currentUpdate.content || "Status image"}
+                    className="max-h-full max-w-full object-contain"
+                    />
+                )}
+
+                {currentUpdate.content && (
+                    <div className="absolute inset-x-0 bottom-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-6 pb-5 pt-12">
+                    <p className="mx-auto max-w-xl text-center text-base font-medium text-white">
+                        {currentUpdate.content}
+                    </p>
+                    </div>
+                )}
+                </div>
+            ) : (
+           <div className="relative flex h-full w-full items-center justify-center bg-black">
+            {currentUpdate.mediaUrl && (
+                <video
+                    src={currentUpdate.mediaUrl}
+                    autoPlay
+                    playsInline
+                    controls
+                    onTimeUpdate={(event) => {
+                        const video = event.currentTarget;
+
+                        if (Number.isFinite(video.duration) && video.duration > 0) {
+                        setProgress(video.currentTime / video.duration);
+                        }
+                    }}
+                    onEnded={handleNext}
+                    className="max-h-full max-w-full object-contain"
+                    />
+            )}
+
+            {currentUpdate.content && (
+                <div className="pointer-events-none absolute inset-x-0 bottom-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-6 pb-5 pt-12">
+                <p className="mx-auto max-w-xl text-center text-base font-medium text-white">
+                    {currentUpdate.content}
+                </p>
+                </div>
+            )}
+            </div>
+            )}
         </main>
 
         {/*

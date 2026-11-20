@@ -5,7 +5,7 @@ import ThemeToggle from "@/components/theme-toggle";
 import NavigationRail from "@/components/navigation-rail";
 import ConversationList from "@/components/conversation-list";
 import { MessageSquareText, Pin, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import {
   sampleConversations,
   getDirectParticipants,
@@ -64,6 +64,7 @@ import RenameBroadcastDialog from "@/components/rename-broadcast-dialog";
 import EditBroadcastRecipientsDialog from "@/components/edit-broadcast-recipients-dialog";
 import DeleteBroadcastDialog from "@/components/delete-broadcast-dialog";
 import StatusPrivacyScreen from "@/components/status-privacy-screen";
+import { removeExpiredStatuses } from "@/lib/status-utils";
 
 import { CURRENT_USER, CURRENT_USER_ID } from "@/data/users";
 
@@ -313,23 +314,35 @@ const [statusPrivacy, setStatusPrivacy] =
     allowedContactIds: [],
   });
 
+const activeStatusMediaUrlsRef = useRef<Set<string>>(new Set());
+
 const [isStatusPrivacyOpen, setIsStatusPrivacyOpen] = useState(false);
 const handlePublishTextStatus = useCallback(
-  (content: string, background: StatusBackground) => {
+  (
+    content: string,
+    background: StatusBackground,
+    media: File | null
+  ) => {
     const now = Date.now();
+
+    const mediaUrl = media ? URL.createObjectURL(media) : undefined;
 
     const newStatus: StatusUpdate = {
       id: crypto.randomUUID(),
       authorId: CURRENT_USER_ID,
       authorName: CURRENT_USER.name,
       authorInitials: CURRENT_USER.initials,
-      type: "text",
+      type: media
+        ? media.type.startsWith("video/")
+          ? "video"
+          : "image"
+        : "text",
       content,
+      ...(mediaUrl ? { mediaUrl } : {}),
       createdAt: new Date(now).toISOString(),
       expiresAt: new Date(now + 24 * 60 * 60 * 1000).toISOString(),
       viewedBy: [],
-      background,
-
+      ...(!media ? { background } : {}),
       audience: {
         ...statusPrivacy,
         excludedContactIds: [...statusPrivacy.excludedContactIds],
@@ -1432,6 +1445,44 @@ const handleStatusReaction = useCallback(
   }
 
   const latestOutgoingMessage = getLatestOutgoingMessage();
+
+ useEffect(() => {
+  const currentUrls = new Set(
+    statusUpdates
+      .map((status) => status.mediaUrl)
+      .filter(
+        (url): url is string =>
+          typeof url === "string" && url.startsWith("blob:")
+      )
+  );
+
+  for (const previousUrl of activeStatusMediaUrlsRef.current) {
+    if (!currentUrls.has(previousUrl)) {
+      URL.revokeObjectURL(previousUrl);
+    }
+  }
+
+  activeStatusMediaUrlsRef.current = currentUrls;
+}, [statusUpdates]);
+
+  useEffect(() => {
+    const cleanupExpiredStatuses = () => {
+      const now = Date.now();
+
+      setStatusUpdates((previous) =>
+        removeExpiredStatuses(previous, now)
+      );
+    };
+
+    cleanupExpiredStatuses();
+
+    const interval = window.setInterval(
+      cleanupExpiredStatuses,
+      60 * 1000
+    );
+
+    return () => window.clearInterval(interval);
+  }, []);
 
 useEffect(() => {
   setCurrentTime(Date.now());

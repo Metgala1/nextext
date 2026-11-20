@@ -5,12 +5,15 @@ export type StatusUpdate = {
   authorId: string;
   authorName: string;
   authorInitials: string;
+
   type: StatusType;
   content: string;
   mediaUrl?: string;
+
   createdAt: string;
   expiresAt: string;
   viewedBy: string[];
+
   reactions?: StatusReaction[];
   background?: StatusBackground;
   audience?: StatusPrivacySettings;

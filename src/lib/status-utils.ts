@@ -37,6 +37,15 @@ export function groupStatusUpdates(
   }));
 }
 
+export function removeExpiredStatuses(
+  updates: StatusUpdate[],
+  currentTime: number,
+): StatusUpdate[] {
+  return updates.filter(
+    (status) => new Date(status.expiresAt).getTime() > currentTime,
+  );
+}
+
 export function hasUnviewedStatus(
   group: UserStatusGroup,
   currentUserId: string,
