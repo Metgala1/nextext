@@ -21,6 +21,7 @@ import CreateBroadcastDialog from "@/components/create-broadcast-dialog";
 import {
   createBroadcastList,
   type BroadcastList,
+  type BroadcastMessage,
 } from "@/data/broadcast";
 
 import ChatHeader from "@/components/chat-header";
@@ -40,6 +41,9 @@ import EditGroupDescriptionDialog from "@/components/edit-group-description-dial
 import EditGroupPhotoDialog from "@/components/edit-photo-dialog";
 import EditGroupNameDialog from "@/components/edit-group-name-dialog";
 import BroadcastDetailScreen from "@/components/broadcast-detail-screen";
+import RenameBroadcastDialog from "@/components/rename-broadcast-dialog";
+import EditBroadcastRecipientsDialog from "@/components/edit-broadcast-recipients-dialog";
+import DeleteBroadcastDialog from "@/components/delete-broadcast-dialog";
 
 import { CURRENT_USER, CURRENT_USER_ID } from "@/data/users";
 
@@ -221,7 +225,7 @@ const [isEditGroupNameOpen, setIsEditGroupNameOpen] = useState(false);
 
   
 
-  const [isAddGroupMembersOpen, setIsAddGroupMembersOpen] = useState(false);
+const [isAddGroupMembersOpen, setIsAddGroupMembersOpen] = useState(false);
 
 const [broadcastLists, setBroadcastLists] = useState<BroadcastList[]>([]);
 const [isCreateBroadcastOpen, setIsCreateBroadcastOpen] =
@@ -238,6 +242,161 @@ const selectedBroadcastRecipients = selectedBroadcast
       selectedBroadcast.recipientIds.includes(contact.id)
     )
   : [];
+const [isDeleteBroadcastOpen, setIsDeleteBroadcastOpen] =
+  useState(false);
+function handleDeleteBroadcast() {
+  if (!selectedBroadcast) return;
+
+  const broadcastId = selectedBroadcast.id;
+
+  setBroadcastLists((previous) =>
+    previous.filter((broadcast) => broadcast.id !== broadcastId)
+  );
+
+  setBroadcastMessages((previous) => {
+    const updatedMessages = { ...previous };
+    delete updatedMessages[broadcastId];
+    return updatedMessages;
+  });
+
+  setSelectedBroadcastId(null);
+  setIsDeleteBroadcastOpen(false);
+}
+
+const [broadcastMessages, setBroadcastMessages] =
+  useState<Record<string, BroadcastMessage[]>>({});
+const [isRenameBroadcastOpen, setIsRenameBroadcastOpen] =
+  useState(false);
+const [isEditBroadcastRecipientsOpen, setIsEditBroadcastRecipientsOpen] =
+  useState(false);
+function handleUpdateBroadcastRecipients(recipientIds: string[]) {
+  if (!selectedBroadcast) return;
+
+  setBroadcastLists((previous) =>
+    previous.map((broadcast) =>
+      broadcast.id === selectedBroadcast.id
+        ? { ...broadcast, recipientIds }
+        : broadcast
+    )
+  );
+}
+function handleRenameBroadcast(name: string) {
+  if (!selectedBroadcast) return;
+
+  setBroadcastLists((previous) =>
+    previous.map((broadcast) =>
+      broadcast.id === selectedBroadcast.id
+        ? { ...broadcast, name }
+        : broadcast
+    )
+  );
+}
+function handleSendBroadcastMessage(messageText: string) {
+  if (!selectedBroadcast) return;
+
+  const broadcastId = selectedBroadcast.id;
+
+  const broadcastTimestamp = new Date().toISOString();
+
+  const messageTimestamp = new Date().toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  // Resolve each broadcast recipient o their direct conversation.
+  const deliveryTargets = selectedBroadcast.recipientIds.flatMap(
+    (recipientId) => {
+      const contact = availableContacts.find(
+        (item) => item.id === recipientId
+      );
+
+      if (!contact) return [];
+
+      const conversation = conversations.find(
+        (chat) =>
+          chat.type === "direct" &&
+          getDirectParticipants(chat)[1].id === contact.id
+      );
+
+      return conversation ? [conversation] : [];
+    }
+  );
+
+  // Create the original broadcast message.
+  const newBroadcastMessage: BroadcastMessage = {
+    id: crypto.randomUUID(),
+    broadcastId,
+    text: messageText,
+    timestamp: broadcastTimestamp,
+    recipientIds: [...selectedBroadcast.recipientIds],
+  };
+
+  // Save the original message in broadcast history.
+  setBroadcastMessages((previous) => ({
+    ...previous,
+    [broadcastId]: [
+      ...(previous[broadcastId] ?? []),
+      newBroadcastMessage,
+    ],
+  }));
+
+  // Deliver a separate message to every recipient.
+  setConversationMessages((previous) => {
+    const updatedMessages = { ...previous };
+
+    deliveryTargets.forEach((conversation) => {
+      const existingMessages =
+        updatedMessages[conversation.id] ??
+        getSampleMessages(conversation.id, conversation.name);
+
+      const deliveredMessage: Message = {
+        id: crypto.randomUUID(),
+        text: messageText,
+        sender: "me",
+        senderId: CURRENT_USER_ID,
+        timestamp: messageTimestamp,
+        status: "sent",
+      };
+
+      updatedMessages[conversation.id] = [
+        ...existingMessages,
+        deliveredMessage,
+      ];
+    });
+
+    return updatedMessages;
+  });
+
+  // Update the affected conversations in the sidebar.
+  setConversations((previous) => {
+    const deliveryOrder = new Map(
+      deliveryTargets.map((conversation, index) => [
+        conversation.id,
+        index,
+      ])
+    );
+
+    return previous
+      .map((conversation) =>
+        deliveryOrder.has(conversation.id)
+          ? {
+              ...conversation,
+              lastMessage: `You: ${messageText}`,
+              timestamp: messageTimestamp,
+            }
+          : conversation
+      )
+      .sort((a, b) => {
+        const aOrder = deliveryOrder.get(a.id);
+        const bOrder = deliveryOrder.get(b.id);
+
+        if (aOrder === undefined) return 1;
+        if (bOrder === undefined) return -1;
+
+        return aOrder - bOrder;
+      });
+  });
+}
 
 function handleCancelEditing() {
     setMessageBeingEdited(null);
@@ -1175,8 +1334,13 @@ function handleSelectConversation(conversationId: string) {
             </div>
           ) : activeNavigationItem === "Broadcast" && selectedBroadcast ? (
                 <BroadcastDetailScreen
+                  onDelete={() => setIsDeleteBroadcastOpen(true)}
+                  onManageRecipients={() => setIsEditBroadcastRecipientsOpen(true)}
+                  onRename={() => setIsRenameBroadcastOpen(true)}
                   broadcast={selectedBroadcast}
                   recipients={selectedBroadcastRecipients}
+                  messages={broadcastMessages[selectedBroadcast.id] ?? []}
+                  onSendMessage={handleSendBroadcastMessage}
                   onBack={() => setSelectedBroadcastId(null)}
                 />
               ) : activeNavigationItem === "Broadcast" ? (
@@ -1559,6 +1723,34 @@ function handleSelectConversation(conversationId: string) {
             )}
             onClose={() => setIsAddGroupMembersOpen(false)}
             onAddMembers={handleAddGroupMembers}
+          />
+        )}
+
+        {selectedBroadcast && (
+          <RenameBroadcastDialog
+            isOpen={isRenameBroadcastOpen}
+            currentName={selectedBroadcast.name}
+            onClose={() => setIsRenameBroadcastOpen(false)}
+            onSave={handleRenameBroadcast}
+          />
+        )}
+
+        {selectedBroadcast && (
+          <EditBroadcastRecipientsDialog
+            isOpen={isEditBroadcastRecipientsOpen}
+            contacts={availableContacts}
+            selectedRecipientIds={selectedBroadcast.recipientIds}
+            onClose={() => setIsEditBroadcastRecipientsOpen(false)}
+            onSave={handleUpdateBroadcastRecipients}
+          />
+        )}
+
+        {selectedBroadcast && (
+          <DeleteBroadcastDialog
+            isOpen={isDeleteBroadcastOpen}
+            broadcastName={selectedBroadcast.name}
+            onClose={() => setIsDeleteBroadcastOpen(false)}
+            onConfirm={handleDeleteBroadcast}
           />
         )}
 

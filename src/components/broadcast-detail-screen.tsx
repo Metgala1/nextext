@@ -1,19 +1,31 @@
 "use client";
-
-import { ArrowLeft, RadioTower, Users } from "lucide-react";
+import { ArrowLeft, RadioTower, Users, Pencil, Trash2 } from "lucide-react";
 import type { BroadcastList } from "@/data/broadcast";
 import type { ConversationParticipant } from "@/data/conversation";
+import type { BroadcastMessage } from "@/data/broadcast";
+import BroadcastMessageList from "@/components/broadcast-message-list";
+import BroadcastComposer from "@/components/broadcast-composer";
 
 type BroadcastDetailScreenProps = {
   broadcast: BroadcastList;
   recipients: ConversationParticipant[];
+  messages: BroadcastMessage[];
+  onSendMessage: (message: string) => void;
   onBack: () => void;
+  onRename: () => void;
+  onManageRecipients: () => void;
+  onDelete: () => void;
 };
 
 export default function BroadcastDetailScreen({
   broadcast,
   recipients,
   onBack,
+  onSendMessage,
+  messages,
+  onRename,
+  onManageRecipients,
+  onDelete
 }: BroadcastDetailScreenProps) {
   return (
     <section className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
@@ -39,37 +51,51 @@ export default function BroadcastDetailScreen({
           <p className="mt-1 text-sm text-text-secondary">
             {recipients.length} {recipients.length === 1 ? "recipient" : "recipients"}
           </p>
+          
         </div>
+        <button
+        type="button"
+        onClick={onRename}
+        aria-label="Rename broadcast list"
+        className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-surface-elevated hover:text-foreground"
+        >
+        <Pencil size={17} />
+        </button>
+
+        <button
+            type="button"
+            onClick={onDelete}
+            aria-label="Delete broadcast list"
+            className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-red-500/10 hover:text-red-500"
+            >
+            <Trash2 size={17} />
+        </button>
+
+        <button
+        type="button"
+        onClick={onManageRecipients}
+        aria-label="Manage broadcast recipients"
+        className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-surface-elevated hover:text-foreground"
+        >
+        <Users size={17} />
+        </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="mx-auto max-w-2xl">
-          <div className="mb-6 flex items-center gap-2">
-            <Users size={17} className="text-text-secondary" />
+      <div className="flex min-h-0 flex-1 flex-col">
+        <BroadcastMessageList messages={messages} />
 
-            <h2 className="text-sm font-semibold text-foreground">
-              Recipients
-            </h2>
-          </div>
-
-          <div className="divide-y divide-border rounded-xl border border-border">
-            {recipients.map((recipient) => (
-              <div
-                key={recipient.id}
-                className="flex items-center gap-3 px-4 py-3"
-              >
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-elevated text-sm font-semibold text-foreground">
-                  {recipient.initials}
-                </div>
-
-                <span className="text-sm font-medium text-foreground">
-                  {recipient.name}
-                </span>
-              </div>
-            ))}
-          </div>
+        <div className="border-t border-border px-6 py-3">
+            <p className="text-xs text-text-secondary">
+            Sending to {recipients.length}{" "}
+            {recipients.length === 1 ? "recipient" : "recipients"}
+            </p>
         </div>
-      </div>
+
+        <BroadcastComposer
+            onSend={onSendMessage}
+            disabled={recipients.length === 0}
+        />
+        </div>
     </section>
   );
 }

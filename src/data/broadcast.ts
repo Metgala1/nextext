@@ -5,6 +5,14 @@ export type BroadcastList = {
   createdAt: string;
 };
 
+export type BroadcastMessage = {
+  id: string;
+  broadcastId: string;
+  text: string;
+  timestamp: string;
+  recipientIds: string[];
+};
+
 export function createBroadcastList({
   name,
   recipientIds,
