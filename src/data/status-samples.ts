@@ -1,4 +1,5 @@
 import type { StatusUpdate } from "@/data/status";
+import { CURRENT_USER_ID } from "@/data/users";
 
 const now = Date.now();
 const oneHour = 60 * 60 * 1000;
@@ -7,8 +8,8 @@ export const sampleStatusUpdates: StatusUpdate[] = [
   {
     id: "status-1",
     authorId: "user-1",
-    authorName: "Sarah",
-    authorInitials: "SA",
+    authorName: "Sarah Chen",
+    authorInitials: "SC",
     type: "text",
     content: "A little progress every day adds up to big results.",
     createdAt: new Date(now - oneHour).toISOString(),
@@ -18,8 +19,8 @@ export const sampleStatusUpdates: StatusUpdate[] = [
   {
     id: "status-2",
     authorId: "user-1",
-    authorName: "Sarah",
-    authorInitials: "SA",
+    authorName: "Sarah Chen",
+    authorInitials: "SC",
     type: "text",
     content: "Taking things one day at a time.",
     createdAt: new Date(now - 30 * 60 * 1000).toISOString(),
@@ -29,20 +30,20 @@ export const sampleStatusUpdates: StatusUpdate[] = [
   {
     id: "status-3",
     authorId: "user-2",
-    authorName: "Michael",
-    authorInitials: "MI",
+    authorName: "Michael Johnson",
+    authorInitials: "MJ",
     type: "image",
     content: "Weekend moments",
     mediaUrl: "/images/status/weekend.jpg",
     createdAt: new Date(now - 2 * oneHour).toISOString(),
     expiresAt: new Date(now + 22 * oneHour).toISOString(),
-    viewedBy: ["current-user"],
+    viewedBy: [CURRENT_USER_ID],
   },
   {
     id: "status-4",
     authorId: "user-3",
-    authorName: "Daniel",
-    authorInitials: "DA",
+    authorName: "Daniel Kim",
+    authorInitials: "DK",
     type: "text",
     content: "Keep showing up. Your future self will thank you.",
     createdAt: new Date(now - 4 * oneHour).toISOString(),
@@ -52,24 +53,39 @@ export const sampleStatusUpdates: StatusUpdate[] = [
   {
     id: "status-5",
     authorId: "user-4",
-    authorName: "Grace",
-    authorInitials: "GR",
+    authorName: "Grace Nkem",
+    authorInitials: "GN",
     type: "video",
     content: "A beautiful evening",
     mediaUrl: "/videos/status/evening.mp4",
     createdAt: new Date(now - 6 * oneHour).toISOString(),
     expiresAt: new Date(now + 18 * oneHour).toISOString(),
-    viewedBy: ["current-user"],
+    viewedBy: [CURRENT_USER_ID],
   },
   {
     id: "status-6",
     authorId: "user-5",
-    authorName: "David",
-    authorInitials: "DA",
+    authorName: "David Okafor",
+    authorInitials: "DO",
     type: "text",
     content: "New opportunities, new beginnings.",
     createdAt: new Date(now - 8 * oneHour).toISOString(),
     expiresAt: new Date(now + 16 * oneHour).toISOString(),
     viewedBy: [],
+  },
+  {
+    id: "status-current-1",
+    authorId: CURRENT_USER_ID,
+    authorName: "You",
+    authorInitials: "ME",
+    type: "text",
+    content: "Building something new with NexText.",
+    createdAt: new Date(now - 30 * 60 * 1000).toISOString(),
+    expiresAt: new Date(now + 23.5 * oneHour).toISOString(),
+    viewedBy: ["user-1", "user-2"],
+    background: {
+      background: "#173F5F",
+      foreground: "#FFFFFF",
+    },
   },
 ];

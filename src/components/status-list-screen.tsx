@@ -99,29 +99,52 @@ export default function StatusListScreen({
             My status
           </h2>
 
-          <button
+                    
+            <button
             type="button"
-            onClick={onCreateStatus}
+            onClick={() => {
+                if (myStatus) {
+                onSelectStatus(myStatus);
+                } else {
+                onCreateStatus();
+                }
+            }}
             className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors hover:bg-surface-elevated"
-          >
-            <div className="relative flex size-12 shrink-0 items-center justify-center rounded-full bg-surface-elevated text-sm font-semibold text-foreground">
-              ME
-              <span className="absolute -right-1 -bottom-1 flex size-5 items-center justify-center rounded-full border-2 border-background bg-accent text-white">
+            >
+            <div
+                className={`relative flex size-12 shrink-0 items-center justify-center rounded-full p-[2px] text-sm font-semibold ${
+                myStatus ? "bg-accent" : "bg-surface-elevated"
+                }`}
+            >
+                <div className="flex size-full items-center justify-center rounded-full bg-surface text-foreground">
+                ME
+                </div>
+
+                <span
+                role="button"
+                aria-label="Add status"
+                onClick={(event) => {
+                    event.stopPropagation();
+                    onCreateStatus();
+                }}
+                className="absolute -right-1 -bottom-1 flex size-5 items-center justify-center rounded-full border-2 border-background bg-accent text-white"
+                >
                 <Plus size={13} />
-              </span>
+                </span>
             </div>
 
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-foreground">
+                <p className="text-sm font-semibold text-foreground">
                 My status
-              </p>
-              <p className="mt-1 text-xs text-text-secondary">
+                </p>
+                <p className="mt-1 text-xs text-text-secondary">
                 {myStatus
-                  ? `${myStatus.updates.length} updates · Tap to add`
-                  : "Tap to add a status update"}
-              </p>
+                    ? `${myStatus.updates.length} updates · Tap to view`
+                    : "Tap to add a status update"}
+                </p>
             </div>
-          </button>
+            </button>
+
         </section>
 
         {recentStatuses.length > 0 && (

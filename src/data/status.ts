@@ -5,15 +5,25 @@ export type StatusUpdate = {
   authorId: string;
   authorName: string;
   authorInitials: string;
-
   type: StatusType;
   content: string;
   mediaUrl?: string;
-
   createdAt: string;
   expiresAt: string;
-
   viewedBy: string[];
+  reactions?: StatusReaction[];
+  background?: StatusBackground;
+};
+
+export type StatusReaction = {
+  userId: string;
+  emoji: string;
+};
+
+export type StatusBackground = {
+  background: string;
+  foreground: string;
+
 };
 
 export type UserStatusGroup = {

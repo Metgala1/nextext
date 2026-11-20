@@ -9,6 +9,17 @@ export type MessageReaction = {
   userId: string;
 };
 
+export type StatusReplyPreview = {
+  authorName: string;
+  type: "text" | "image" | "video";
+  content: string;
+  mediaUrl?: string;
+  background?: {
+    background: string;
+    foreground: string;
+  };
+};
+
 
 export type Message = {
   id: string;
@@ -20,16 +31,18 @@ export type Message = {
 
   replyTo?: string;
   replyToText?: string;
+  replyToStatus?: string;
   replyToSender?: "me" | "them";
   replyToSenderId?: string;
-  reactions?: MessageReaction[]
-  starredBy?: string[]
+  reactions?: MessageReaction[];
+  starredBy?: string[];
   forwardedFrom?: {
     messageId: string;
     conversationId: string;
   };
   editedAt?: string;
   pinnedAt?: string;
+  replyToStatusPreview?: StatusReplyPreview;
 };
 
 export function getSampleMessages(

@@ -3,9 +3,10 @@ import type { StatusUpdate, UserStatusGroup } from "@/data/status";
 export function groupStatusUpdates(
   updates: StatusUpdate[],
   currentUserId: string,
+  currentTime: number,
 ): UserStatusGroup[] {
   const activeUpdates = updates.filter(
-    (update) => new Date(update.expiresAt).getTime() > Date.now(),
+    (update) => new Date(update.expiresAt).getTime() > currentTime,
   );
 
   const groups = new Map<string, UserStatusGroup>();

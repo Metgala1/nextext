@@ -6,6 +6,7 @@ import type { MessageAction } from "./message-actions";
 import ReactionPicker from "./reaction-picker";
 import { CURRENT_USER_ID } from "@/data/users";
 import type { ConversationParticipant } from "@/data/conversation";
+import StatusReplyPreview from "@/components/status-reply-preview";
 
 type MessageListProps = {
   messages: Message[];
@@ -392,6 +393,11 @@ export default function MessageList({
                   <p className="mb-1 text-xs font-semibold text-accent">
                     {senderName}
                   </p>
+                )}
+                {message.replyToStatusPreview && (
+                  <StatusReplyPreview
+                    preview={message.replyToStatusPreview}
+                  />
                 )}
                 {message.replyTo && (
                   <button

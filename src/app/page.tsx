@@ -1,4 +1,3 @@
-
 "use client";
 
 import AppShell from "@/components/app-shell";
@@ -6,7 +5,7 @@ import ThemeToggle from "@/components/theme-toggle";
 import NavigationRail from "@/components/navigation-rail";
 import ConversationList from "@/components/conversation-list";
 import { MessageSquareText, Pin, X } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   sampleConversations,
   getDirectParticipants,
@@ -23,6 +22,16 @@ import {
   type BroadcastList,
   type BroadcastMessage,
 } from "@/data/broadcast";
+
+import StatusListScreen from "@/components/status-list-screen";
+import { sampleStatusUpdates } from "@/data/status-samples";
+import { groupStatusUpdates } from "@/lib/status-utils";
+import CreateTextStatus from "@/components/create-text-status";
+import type { StatusUpdate, StatusBackground } from "@/data/status";
+import StatusViewer from "@/components/status-viewer";
+import type { UserStatusGroup } from "@/data/status";
+
+
 
 import ChatHeader from "@/components/chat-header";
 import MessageList from "@/components/message-list";
@@ -63,69 +72,75 @@ type MessageToForward = {
 const MAX_PINNED_MESSAGES = 3;
 
 export default function Home() {
- const [conversations, setConversations] =
-  useState<Conversation[]>(sampleConversations);
+  const [conversations, setConversations] =
+    useState<Conversation[]>(sampleConversations);
 
-  const [selectedConversationId, setSelectedConversationId] =
-    useState<string | null>(null);
+  const [selectedConversationId, setSelectedConversationId] = useState<
+    string | null
+  >(null);
 
   const selectedConversation = conversations.find(
     (chat) => chat.id === selectedConversationId,
   );
 
-const [isEditGroupNameOpen, setIsEditGroupNameOpen] = useState(false);
- const selectedConversationParticipants = selectedConversation
-  ? selectedConversation.type === "group"
-    ? selectedConversation.participants ?? []
-    : getDirectParticipants(selectedConversation)
-  : [];
+  const [isEditGroupNameOpen, setIsEditGroupNameOpen] = useState(false);
+  const selectedConversationParticipants = selectedConversation
+    ? selectedConversation.type === "group"
+      ? (selectedConversation.participants ?? [])
+      : getDirectParticipants(selectedConversation)
+    : [];
 
   const [isEditGroupDescriptionOpen, setIsEditGroupDescriptionOpen] =
-  useState(false);
+    useState(false);
 
   function handleSaveGroupDescription(description: string) {
-  if (!selectedConversation || selectedConversation.type !== "group") {
-    return;
+    if (!selectedConversation || selectedConversation.type !== "group") {
+      return;
+    }
+
+    if (selectedConversation.createdBy !== CURRENT_USER_ID) {
+      return;
+    }
+
+    setConversations((previous) =>
+      previous.map((conversation) =>
+        conversation.id === selectedConversation.id &&
+        conversation.type === "group"
+          ? {
+              ...conversation,
+              description,
+            }
+          : conversation,
+      ),
+    );
+
+    setIsEditGroupDescriptionOpen(false);
   }
-
-  if (selectedConversation.createdBy !== CURRENT_USER_ID) {
-    return;
-  }
-
-  setConversations((previous) =>
-    previous.map((conversation) =>
-      conversation.id === selectedConversation.id &&
-      conversation.type === "group"
-        ? {
-            ...conversation,
-            description,
-          }
-        : conversation
-    )
-  );
-
-  setIsEditGroupDescriptionOpen(false);
-}
 
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
-  const availableContacts: ConversationParticipant[] =
-  sampleConversations.map(
-    (conversation) => getDirectParticipants(conversation)[1]
+  const availableContacts: ConversationParticipant[] = sampleConversations.map(
+    (conversation) => getDirectParticipants(conversation)[1],
   );
 
-  const [isNewConversationOpen, setIsNewConversationOpen] =
-  useState(false);
+  const [isNewConversationOpen, setIsNewConversationOpen] = useState(false);
 
   const [isEditGroupPhotoOpen, setIsEditGroupPhotoOpen] = useState(false);
 
   const [isContactDetailsOpen, setIsContactDetailsOpen] = useState(false);
 
-  const [replyingToMessage, setReplyingToMessage] =
-    useState<Message | null>(null);
+  const [replyingToMessage, setReplyingToMessage] = useState<Message | null>(
+    null,
+  );
 
-  const [mutedConversationIds, setMutedConversationIds] = useState<string[]>([]);
-  const [clearedConversationIds, setClearedConversationIds] = useState<string[]>([]);
-  const [blockedConversationIds, setBlockedConversationIds] = useState<string[]>([]);
+  const [mutedConversationIds, setMutedConversationIds] = useState<string[]>(
+    [],
+  );
+  const [clearedConversationIds, setClearedConversationIds] = useState<
+    string[]
+  >([]);
+  const [blockedConversationIds, setBlockedConversationIds] = useState<
+    string[]
+  >([]);
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -133,50 +148,41 @@ const [isEditGroupNameOpen, setIsEditGroupNameOpen] = useState(false);
   const [confirmationAction, setConfirmationAction] =
     useState<ConfirmationAction | null>(null);
 
-  const [currentSearchResultIndex, setCurrentSearchResultIndex] =
-    useState(0);
+  const [currentSearchResultIndex, setCurrentSearchResultIndex] = useState(0);
 
-  const [conversationMessages, setConversationMessages] =
-    useState<Record<string, Message[]>>({});
+  const [conversationMessages, setConversationMessages] = useState<
+    Record<string, Message[]>
+  >({});
 
   // Starred messages screen state
-  const [isStarredMessagesOpen, setIsStarredMessagesOpen] =
-    useState(false);
+  const [isStarredMessagesOpen, setIsStarredMessagesOpen] = useState(false);
 
   const messages =
     selectedConversation &&
-      !clearedConversationIds.includes(selectedConversation.id)
+    !clearedConversationIds.includes(selectedConversation.id)
       ? (
-        conversationMessages[selectedConversation.id] ??
-        getSampleMessages(
-          selectedConversation.id,
-          selectedConversation.name,
-        )
-      ).map((message) => ({
-        ...message,
-        status: message.status ?? "sent",
-      }))
+          conversationMessages[selectedConversation.id] ??
+          getSampleMessages(selectedConversation.id, selectedConversation.name)
+        ).map((message) => ({
+          ...message,
+          status: message.status ?? "sent",
+        }))
       : [];
 
   const matchingMessages = messages.filter((message) =>
-    message.text
-      .toLowerCase()
-      .includes(searchQuery.trim().toLowerCase()),
+    message.text.toLowerCase().includes(searchQuery.trim().toLowerCase()),
   );
 
-  const [isPinnedMessagesOpen, setIsPinnedMessagesOpen] =
-    useState(false);
+  const [isPinnedMessagesOpen, setIsPinnedMessagesOpen] = useState(false);
 
   const pinnedMessages = messages
     .filter((message) => Boolean(message.pinnedAt))
     .sort(
       (a, b) =>
-        new Date(b.pinnedAt!).getTime() -
-        new Date(a.pinnedAt!).getTime()
+        new Date(b.pinnedAt!).getTime() - new Date(a.pinnedAt!).getTime(),
     );
 
-  const [pinLimitNotice, setPinLimitNotice] =
-    useState<string | null>(null);
+  const [pinLimitNotice, setPinLimitNotice] = useState<string | null>(null);
 
   const starredMessages = conversations.flatMap((conversation) => {
     const messages =
@@ -184,9 +190,7 @@ const [isEditGroupNameOpen, setIsEditGroupNameOpen] = useState(false);
       getSampleMessages(conversation.id, conversation.name);
 
     return messages
-      .filter((message) =>
-        message.starredBy?.includes(CURRENT_USER_ID),
-      )
+      .filter((message) => message.starredBy?.includes(CURRENT_USER_ID))
       .map((message) => ({
         ...message,
         conversationId: conversation.id,
@@ -194,14 +198,12 @@ const [isEditGroupNameOpen, setIsEditGroupNameOpen] = useState(false);
       }));
   });
 
-  const [activeNavigationItem, setActiveNavigationItem] =
-    useState("Messages");
+  const [activeNavigationItem, setActiveNavigationItem] = useState("Messages");
 
   const [isLeaveGroupConfirmationOpen, setIsLeaveGroupConfirmationOpen] =
-  useState(false);
+    useState(false);
 
-  const [pendingMessageId, setPendingMessageId] =
-    useState<string | null>(null);
+  const [pendingMessageId, setPendingMessageId] = useState<string | null>(null);
 
   const [messageToForward, setMessageToForward] =
     useState<MessageToForward | null>(null);
@@ -211,440 +213,500 @@ const [isEditGroupNameOpen, setIsEditGroupNameOpen] = useState(false);
     conversationId: string;
   } | null>(null);
 
-  const [messageBeingEdited, setMessageBeingEdited] =
-    useState<Message | null>(null);
+  const [messageBeingEdited, setMessageBeingEdited] = useState<Message | null>(
+    null,
+  );
 
-  const [editingConversationId, setEditingConversationId] =
-    useState<string | null>(null);
+  const [editingConversationId, setEditingConversationId] = useState<
+    string | null
+  >(null);
 
   const [isNewDirectConversationOpen, setIsNewDirectConversationOpen] =
-  useState(false);
+    useState(false);
 
   const [memberToRemove, setMemberToRemove] =
-  useState<ConversationParticipant | null>(null);
+    useState<ConversationParticipant | null>(null);
 
-  
+  const [isAddGroupMembersOpen, setIsAddGroupMembersOpen] = useState(false);
 
-const [isAddGroupMembersOpen, setIsAddGroupMembersOpen] = useState(false);
-
-const [broadcastLists, setBroadcastLists] = useState<BroadcastList[]>([]);
-const [isCreateBroadcastOpen, setIsCreateBroadcastOpen] =
-  useState(false);
-const [selectedBroadcastId, setSelectedBroadcastId] =
-  useState<string | null>(null);
-
-const selectedBroadcast = broadcastLists.find(
-  (broadcast) => broadcast.id === selectedBroadcastId
-);
-
-const selectedBroadcastRecipients = selectedBroadcast
-  ? availableContacts.filter((contact) =>
-      selectedBroadcast.recipientIds.includes(contact.id)
-    )
-  : [];
-const [isDeleteBroadcastOpen, setIsDeleteBroadcastOpen] =
-  useState(false);
-function handleDeleteBroadcast() {
-  if (!selectedBroadcast) return;
-
-  const broadcastId = selectedBroadcast.id;
-
-  setBroadcastLists((previous) =>
-    previous.filter((broadcast) => broadcast.id !== broadcastId)
+  const [broadcastLists, setBroadcastLists] = useState<BroadcastList[]>([]);
+  const [isCreateBroadcastOpen, setIsCreateBroadcastOpen] = useState(false);
+  const [selectedBroadcastId, setSelectedBroadcastId] = useState<string | null>(
+    null,
   );
 
-  setBroadcastMessages((previous) => {
-    const updatedMessages = { ...previous };
-    delete updatedMessages[broadcastId];
-    return updatedMessages;
-  });
-
-  setSelectedBroadcastId(null);
-  setIsDeleteBroadcastOpen(false);
-}
-
-const [broadcastMessages, setBroadcastMessages] =
-  useState<Record<string, BroadcastMessage[]>>({});
-const [isRenameBroadcastOpen, setIsRenameBroadcastOpen] =
-  useState(false);
-const [isEditBroadcastRecipientsOpen, setIsEditBroadcastRecipientsOpen] =
-  useState(false);
-function handleUpdateBroadcastRecipients(recipientIds: string[]) {
-  if (!selectedBroadcast) return;
-
-  setBroadcastLists((previous) =>
-    previous.map((broadcast) =>
-      broadcast.id === selectedBroadcast.id
-        ? { ...broadcast, recipientIds }
-        : broadcast
-    )
-  );
-}
-function handleRenameBroadcast(name: string) {
-  if (!selectedBroadcast) return;
-
-  setBroadcastLists((previous) =>
-    previous.map((broadcast) =>
-      broadcast.id === selectedBroadcast.id
-        ? { ...broadcast, name }
-        : broadcast
-    )
-  );
-}
-function handleSendBroadcastMessage(messageText: string) {
-  if (!selectedBroadcast) return;
-
-  const broadcastId = selectedBroadcast.id;
-
-  const broadcastTimestamp = new Date().toISOString();
-
-  const messageTimestamp = new Date().toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  // Resolve each broadcast recipient o their direct conversation.
-  const deliveryTargets = selectedBroadcast.recipientIds.flatMap(
-    (recipientId) => {
-      const contact = availableContacts.find(
-        (item) => item.id === recipientId
-      );
-
-      if (!contact) return [];
-
-      const conversation = conversations.find(
-        (chat) =>
-          chat.type === "direct" &&
-          getDirectParticipants(chat)[1].id === contact.id
-      );
-
-      return conversation ? [conversation] : [];
-    }
+  const selectedBroadcast = broadcastLists.find(
+    (broadcast) => broadcast.id === selectedBroadcastId,
   );
 
-  // Create the original broadcast message.
-  const newBroadcastMessage: BroadcastMessage = {
-    id: crypto.randomUUID(),
-    broadcastId,
-    text: messageText,
-    timestamp: broadcastTimestamp,
-    recipientIds: [...selectedBroadcast.recipientIds],
-  };
+  const selectedBroadcastRecipients = selectedBroadcast
+    ? availableContacts.filter((contact) =>
+        selectedBroadcast.recipientIds.includes(contact.id),
+      )
+    : [];
+  const [isDeleteBroadcastOpen, setIsDeleteBroadcastOpen] = useState(false);
+  function handleDeleteBroadcast() {
+    if (!selectedBroadcast) return;
 
-  // Save the original message in broadcast history.
-  setBroadcastMessages((previous) => ({
-    ...previous,
-    [broadcastId]: [
-      ...(previous[broadcastId] ?? []),
-      newBroadcastMessage,
-    ],
-  }));
+    const broadcastId = selectedBroadcast.id;
 
-  // Deliver a separate message to every recipient.
-  setConversationMessages((previous) => {
-    const updatedMessages = { ...previous };
-
-    deliveryTargets.forEach((conversation) => {
-      const existingMessages =
-        updatedMessages[conversation.id] ??
-        getSampleMessages(conversation.id, conversation.name);
-
-      const deliveredMessage: Message = {
-        id: crypto.randomUUID(),
-        text: messageText,
-        sender: "me",
-        senderId: CURRENT_USER_ID,
-        timestamp: messageTimestamp,
-        status: "sent",
-      };
-
-      updatedMessages[conversation.id] = [
-        ...existingMessages,
-        deliveredMessage,
-      ];
-    });
-
-    return updatedMessages;
-  });
-
-  // Update the affected conversations in the sidebar.
-  setConversations((previous) => {
-    const deliveryOrder = new Map(
-      deliveryTargets.map((conversation, index) => [
-        conversation.id,
-        index,
-      ])
+    setBroadcastLists((previous) =>
+      previous.filter((broadcast) => broadcast.id !== broadcastId),
     );
 
-    return previous
-      .map((conversation) =>
-        deliveryOrder.has(conversation.id)
+    setBroadcastMessages((previous) => {
+      const updatedMessages = { ...previous };
+      delete updatedMessages[broadcastId];
+      return updatedMessages;
+    });
+
+    setSelectedBroadcastId(null);
+    setIsDeleteBroadcastOpen(false);
+  }
+
+  const [broadcastMessages, setBroadcastMessages] = useState<
+    Record<string, BroadcastMessage[]>
+  >({});
+  const [isRenameBroadcastOpen, setIsRenameBroadcastOpen] = useState(false);
+  const [isEditBroadcastRecipientsOpen, setIsEditBroadcastRecipientsOpen] =
+    useState(false);
+const [statusUpdates, setStatusUpdates] =
+  useState<StatusUpdate[]>(sampleStatusUpdates);
+
+const [isCreatingTextStatus, setIsCreatingTextStatus] =
+  useState(false);
+  const [currentTime, setCurrentTime] = useState<number | null>(null);
+
+const statusGroups =
+  currentTime === null
+    ? []
+    : groupStatusUpdates(
+        statusUpdates,
+        CURRENT_USER_ID,
+        currentTime
+      );
+const [selectedStatusGroup, setSelectedStatusGroup] =
+  useState<UserStatusGroup | null>(null);
+function handlePublishTextStatus(
+  content: string,
+  background: StatusBackground
+) {
+  const now = Date.now();
+
+  const newStatus: StatusUpdate = {
+    id: crypto.randomUUID(),
+    authorId: CURRENT_USER_ID,
+    authorName: "You",
+    authorInitials: "ME",
+    type: "text",
+    content,
+    background,
+    createdAt: new Date(now).toISOString(),
+    expiresAt: new Date(now + 24 * 60 * 60 * 1000).toISOString(),
+    viewedBy: [],
+  };
+
+  setStatusUpdates((previous) => [...previous, newStatus]);
+  setIsCreatingTextStatus(false);
+}
+
+const handleViewStatus = useCallback((statusId: string) => {
+  setStatusUpdates((previous) => {
+    const status = previous.find(
+      (update) => update.id === statusId
+    );
+
+    // Nothing to update if it doesn't exist or was already viewed.
+    if (
+      !status ||
+      status.viewedBy.includes(CURRENT_USER_ID)
+    ) {
+      return previous;
+    }
+
+    return previous.map((update) =>
+      update.id === statusId
+        ? {
+            ...update,
+            viewedBy: [
+              ...update.viewedBy,
+              CURRENT_USER_ID,
+            ],
+          }
+        : update
+    );
+  });
+}, []);
+
+  function handleUpdateBroadcastRecipients(recipientIds: string[]) {
+    if (!selectedBroadcast) return;
+
+    setBroadcastLists((previous) =>
+      previous.map((broadcast) =>
+        broadcast.id === selectedBroadcast.id
+          ? { ...broadcast, recipientIds }
+          : broadcast,
+      ),
+    );
+  }
+
+  
+  function handleRenameBroadcast(name: string) {
+    if (!selectedBroadcast) return;
+
+    setBroadcastLists((previous) =>
+      previous.map((broadcast) =>
+        broadcast.id === selectedBroadcast.id
+          ? { ...broadcast, name }
+          : broadcast,
+      ),
+    );
+  }
+  function handleSendBroadcastMessage(messageText: string) {
+    if (!selectedBroadcast) return;
+
+    const broadcastId = selectedBroadcast.id;
+
+    const broadcastTimestamp = new Date().toISOString();
+
+    const messageTimestamp = new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    // Resolve each broadcast recipient o their direct conversation.
+    const deliveryTargets = selectedBroadcast.recipientIds.flatMap(
+      (recipientId) => {
+        const contact = availableContacts.find(
+          (item) => item.id === recipientId,
+        );
+
+        if (!contact) return [];
+
+        const conversation = conversations.find(
+          (chat) =>
+            chat.type === "direct" &&
+            getDirectParticipants(chat)[1].id === contact.id,
+        );
+
+        return conversation ? [conversation] : [];
+      },
+    );
+
+    // Create the original broadcast message.
+    const newBroadcastMessage: BroadcastMessage = {
+      id: crypto.randomUUID(),
+      broadcastId,
+      text: messageText,
+      timestamp: broadcastTimestamp,
+      recipientIds: [...selectedBroadcast.recipientIds],
+    };
+
+    // Save the original message in broadcast history.
+    setBroadcastMessages((previous) => ({
+      ...previous,
+      [broadcastId]: [...(previous[broadcastId] ?? []), newBroadcastMessage],
+    }));
+
+    // Deliver a separate message to every recipient.
+    setConversationMessages((previous) => {
+      const updatedMessages = { ...previous };
+
+      deliveryTargets.forEach((conversation) => {
+        const existingMessages =
+          updatedMessages[conversation.id] ??
+          getSampleMessages(conversation.id, conversation.name);
+
+        const deliveredMessage: Message = {
+          id: crypto.randomUUID(),
+          text: messageText,
+          sender: "me",
+          senderId: CURRENT_USER_ID,
+          timestamp: messageTimestamp,
+          status: "sent",
+        };
+
+        updatedMessages[conversation.id] = [
+          ...existingMessages,
+          deliveredMessage,
+        ];
+      });
+
+      return updatedMessages;
+    });
+
+    // Update the affected conversations in the sidebar.
+    setConversations((previous) => {
+      const deliveryOrder = new Map(
+        deliveryTargets.map((conversation, index) => [conversation.id, index]),
+      );
+
+      return previous
+        .map((conversation) =>
+          deliveryOrder.has(conversation.id)
+            ? {
+                ...conversation,
+                lastMessage: `You: ${messageText}`,
+                timestamp: messageTimestamp,
+              }
+            : conversation,
+        )
+        .sort((a, b) => {
+          const aOrder = deliveryOrder.get(a.id);
+          const bOrder = deliveryOrder.get(b.id);
+
+          if (aOrder === undefined) return 1;
+          if (bOrder === undefined) return -1;
+
+          return aOrder - bOrder;
+        });
+    });
+  }
+
+  function handleCancelEditing() {
+    setMessageBeingEdited(null);
+  }
+
+  const handleSaveGroupName = (name: string) => {
+    if (!selectedConversation || selectedConversation.type !== "group") {
+      return;
+    }
+
+    if (selectedConversation.createdBy !== CURRENT_USER_ID) {
+      return;
+    }
+
+    setConversations((prev) =>
+      prev.map((conversation) =>
+        conversation.id === selectedConversation.id &&
+        conversation.type === "group"
           ? {
               ...conversation,
-              lastMessage: `You: ${messageText}`,
-              timestamp: messageTimestamp,
+              name,
+              initials: name.slice(0, 2).toUpperCase(),
             }
-          : conversation
-      )
-      .sort((a, b) => {
-        const aOrder = deliveryOrder.get(a.id);
-        const bOrder = deliveryOrder.get(b.id);
+          : conversation,
+      ),
+    );
 
-        if (aOrder === undefined) return 1;
-        if (bOrder === undefined) return -1;
+    setIsEditGroupNameOpen(false);
+  };
 
-        return aOrder - bOrder;
-      });
-  });
-}
+  const handleToggleGroupMute = () => {
+    if (!selectedConversation || selectedConversation.type !== "group") {
+      return;
+    }
 
-function handleCancelEditing() {
-    setMessageBeingEdited(null);
-}
+    setConversations((prev) =>
+      prev.map((conversation) =>
+        conversation.id === selectedConversation.id &&
+        conversation.type === "group"
+          ? {
+              ...conversation,
+              isMuted: !conversation.isMuted,
+            }
+          : conversation,
+      ),
+    );
+  };
 
-const handleSaveGroupName = (name: string) => {
-  if (!selectedConversation || selectedConversation.type !== "group") {
-    return;
+  function handleSaveGroupPhoto(photo: File) {
+    if (!selectedConversation || selectedConversation.type !== "group") {
+      return;
+    }
+
+    if (selectedConversation.createdBy !== CURRENT_USER_ID) {
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      if (typeof reader.result !== "string") return;
+
+      setConversations((previous) =>
+        previous.map((conversation) =>
+          conversation.id === selectedConversation.id &&
+          conversation.type === "group"
+            ? { ...conversation, photoUrl: reader.result as string }
+            : conversation,
+        ),
+      );
+
+      setIsEditGroupPhotoOpen(false);
+    };
+
+    reader.readAsDataURL(photo);
   }
 
-  if (selectedConversation.createdBy !== CURRENT_USER_ID) {
-    return;
+  const handleLeaveGroup = () => {
+    if (!selectedConversation || selectedConversation.type !== "group") {
+      return;
+    }
+
+    if (selectedConversation.createdBy === CURRENT_USER_ID) {
+      return;
+    }
+
+    setConversations((prev) =>
+      prev.map((conversation) =>
+        conversation.id === selectedConversation.id &&
+        conversation.type === "group"
+          ? {
+              ...conversation,
+              participants: conversation.participants.filter(
+                (participant) => participant.id !== CURRENT_USER_ID,
+              ),
+            }
+          : conversation,
+      ),
+    );
+
+    const nextConversation = conversations.find(
+      (conversation) => conversation.id !== selectedConversation.id,
+    );
+
+    setIsLeaveGroupConfirmationOpen(false);
+
+    if (nextConversation) {
+      handleSelectConversation(nextConversation.id);
+    }
+  };
+
+  function handleRemoveGroupMember(participantId: string) {
+    if (!selectedConversation || selectedConversation.type !== "group") {
+      return;
+    }
+
+    const participant = selectedConversation.participants.find(
+      (member) => member.id === participantId,
+    );
+
+    if (!participant) return;
+
+    if (
+      participant.id === selectedConversation.createdBy ||
+      participant.id === CURRENT_USER_ID
+    ) {
+      return;
+    }
+
+    setMemberToRemove(participant);
   }
 
-  setConversations((prev) =>
-    prev.map((conversation) =>
-      conversation.id === selectedConversation.id &&
-      conversation.type === "group"
-        ? {
-            ...conversation,
-            name,
-            initials: name.slice(0, 2).toUpperCase(),
-          }
-        : conversation
-    )
-  );
+  function handleAddGroupMembers(participantIds: string[]) {
+    if (!selectedConversation || selectedConversation.type !== "group") {
+      return;
+    }
 
-  setIsEditGroupNameOpen(false);
-};
+    const newMembers = availableContacts
+      .filter((contact) => participantIds.includes(contact.id))
+      .map((contact) => ({
+        ...contact,
+        role: "member" as const,
+      }));
 
-const handleToggleGroupMute = () => {
-  if (!selectedConversation || selectedConversation.type !== "group") {
-    return;
-  }
-
-  setConversations((prev) =>
-    prev.map((conversation) =>
-      conversation.id === selectedConversation.id &&
-      conversation.type === "group"
-        ? {
-            ...conversation,
-            isMuted: !conversation.isMuted,
-          }
-        : conversation
-    )
-  );
-};
-
-function handleSaveGroupPhoto(photo: File) {
-  if (!selectedConversation || selectedConversation.type !== "group") {
-    return;
-  }
-
-  if (selectedConversation.createdBy !== CURRENT_USER_ID) {
-    return;
-  }
-
-  const reader = new FileReader();
-
-  reader.onload = () => {
-    if (typeof reader.result !== "string") return;
+    if (newMembers.length === 0) return;
 
     setConversations((previous) =>
       previous.map((conversation) =>
         conversation.id === selectedConversation.id &&
         conversation.type === "group"
-          ? { ...conversation, photoUrl: reader.result as string }
-          : conversation
-      )
+          ? {
+              ...conversation,
+              participants: [...conversation.participants, ...newMembers],
+            }
+          : conversation,
+      ),
     );
 
-    setIsEditGroupPhotoOpen(false);
-  };
-
-  reader.readAsDataURL(photo);
-}
-
-const handleLeaveGroup = () => {
-  if (!selectedConversation || selectedConversation.type !== "group") {
-    return;
+    setIsAddGroupMembersOpen(false);
   }
-
-  if (selectedConversation.createdBy === CURRENT_USER_ID) {
-    return;
-  }
-
-  setConversations((prev) =>
-    prev.map((conversation) =>
-      conversation.id === selectedConversation.id &&
-      conversation.type === "group"
-        ? {
-            ...conversation,
-            participants: conversation.participants.filter(
-              (participant) => participant.id !== CURRENT_USER_ID
-            ),
-          }
-        : conversation
-    )
-  );
-
-  const nextConversation = conversations.find(
-    (conversation) => conversation.id !== selectedConversation.id
-  );
-
-  setIsLeaveGroupConfirmationOpen(false);
-
-  if (nextConversation) {
-    handleSelectConversation(nextConversation.id);
-  }
-};
-
-function handleRemoveGroupMember(participantId: string) {
-  if (!selectedConversation || selectedConversation.type !== "group") {
-    return;
-  }
-
-  const participant = selectedConversation.participants.find(
-    (member) => member.id === participantId
-  );
-
-  if (!participant) return;
-
-  if (
-    participant.id === selectedConversation.createdBy ||
-    participant.id === CURRENT_USER_ID
-  ) {
-    return;
-  }
-
-  setMemberToRemove(participant);
-}
-
-
-  function handleAddGroupMembers(participantIds: string[]) {
-  if (!selectedConversation || selectedConversation.type !== "group") {
-    return;
-  }
-
-  const newMembers = availableContacts
-    .filter((contact) => participantIds.includes(contact.id))
-    .map((contact) => ({
-      ...contact,
-      role: "member" as const,
-    }));
-
-  if (newMembers.length === 0) return;
-
-  setConversations((previous) =>
-    previous.map((conversation) =>
-      conversation.id === selectedConversation.id &&
-      conversation.type === "group"
-        ? {
-            ...conversation,
-            participants: [...conversation.participants, ...newMembers],
-          }
-        : conversation
-    )
-  );
-
-  setIsAddGroupMembersOpen(false);
-}
 
   function handleSelectConversationType(type: "direct" | "group") {
-  setIsNewConversationOpen(false);
+    setIsNewConversationOpen(false);
 
-  if (type === "group") {
-    setIsCreateGroupOpen(true);
+    if (type === "group") {
+      setIsCreateGroupOpen(true);
+    }
+
+    if (type === "direct") {
+      setIsNewDirectConversationOpen(true);
+    }
   }
 
-  if (type === "direct") {
-    setIsNewDirectConversationOpen(true)
+  function confirmRemoveGroupMember() {
+    if (!memberToRemove || !selectedConversation) return;
+
+    const participantId = memberToRemove.id;
+
+    setConversations((previous) =>
+      previous.map((conversation) =>
+        conversation.id === selectedConversation.id &&
+        conversation.type === "group"
+          ? {
+              ...conversation,
+              participants: conversation.participants.filter(
+                (member) => member.id !== participantId,
+              ),
+            }
+          : conversation,
+      ),
+    );
+
+    setMemberToRemove(null);
   }
-}
-
-function confirmRemoveGroupMember() {
-  if (!memberToRemove || !selectedConversation) return;
-
-  const participantId = memberToRemove.id;
-
-  setConversations((previous) =>
-    previous.map((conversation) =>
-      conversation.id === selectedConversation.id &&
-      conversation.type === "group"
-        ? {
-            ...conversation,
-            participants: conversation.participants.filter(
-              (member) => member.id !== participantId
-            ),
-          }
-        : conversation
-    )
-  );
-
-  setMemberToRemove(null);
-}
 
   function handleCreateGroup(data: {
-  name: string;
-  description: string;
-  participantIds: string[];
-}) {
-  const selectedContacts = availableContacts.filter((contact) =>
-    data.participantIds.includes(contact.id)
-  );
-
-  const participants: ConversationParticipant[] = [
-    {
-      ...CURRENT_USER,
-      role: "admin",
-    },
-    ...selectedContacts,
-  ];
-
-  const newGroup = createGroupConversation({
-    name: data.name,
-    description: data.description || undefined,
-    participants,
-    createdBy: CURRENT_USER_ID,
-  });
-  setConversations((previous) => [newGroup, ...previous]);
-
-  setConversationMessages((previous) => ({
-    ...previous,
-    [newGroup.id]: [],
-  }));
-
-  setIsCreateGroupOpen(false);
-  handleSelectConversation(newGroup.id);
-  setActiveNavigationItem("Messages");
-}
-
-function handleSelectDirectContact(contactId: string) {
-  const existingConversation = conversations.find((conversation) => {
-    if (conversation.type !== "direct") return false;
-
-    const participants = getDirectParticipants(conversation);
-
-    return participants.some(
-      (participant) => participant.id === contactId
+    name: string;
+    description: string;
+    participantIds: string[];
+  }) {
+    const selectedContacts = availableContacts.filter((contact) =>
+      data.participantIds.includes(contact.id),
     );
-  });
 
-  if (!existingConversation) return;
+    const participants: ConversationParticipant[] = [
+      {
+        ...CURRENT_USER,
+        role: "admin",
+      },
+      ...selectedContacts,
+    ];
 
-  setIsNewDirectConversationOpen(false);
-  setActiveNavigationItem("Messages");
-  handleSelectConversation(existingConversation.id);
-}
+    const newGroup = createGroupConversation({
+      name: data.name,
+      description: data.description || undefined,
+      participants,
+      createdBy: CURRENT_USER_ID,
+    });
+    setConversations((previous) => [newGroup, ...previous]);
+
+    setConversationMessages((previous) => ({
+      ...previous,
+      [newGroup.id]: [],
+    }));
+
+    setIsCreateGroupOpen(false);
+    handleSelectConversation(newGroup.id);
+    setActiveNavigationItem("Messages");
+  }
+
+  function handleSelectDirectContact(contactId: string) {
+    const existingConversation = conversations.find((conversation) => {
+      if (conversation.type !== "direct") return false;
+
+      const participants = getDirectParticipants(conversation);
+
+      return participants.some((participant) => participant.id === contactId);
+    });
+
+    if (!existingConversation) return;
+
+    setIsNewDirectConversationOpen(false);
+    setActiveNavigationItem("Messages");
+    handleSelectConversation(existingConversation.id);
+  }
 
   function handleStartEditing(message: Message) {
     if (!selectedConversation) return;
@@ -670,7 +732,9 @@ function handleSelectDirectContact(contactId: string) {
         previousMessages[conversationId] ??
         getSampleMessages(
           conversationId,
-          conversations.find((conversation) => conversation.id === conversationId)?.name ?? ""
+          conversations.find(
+            (conversation) => conversation.id === conversationId,
+          )?.name ?? "",
         );
 
       return {
@@ -678,11 +742,11 @@ function handleSelectDirectContact(contactId: string) {
         [conversationId]: existingMessages.map((message) =>
           message.id === messageId
             ? {
-              ...message,
-              text: newText,
-              editedAt: new Date().toISOString(),
-            }
-            : message
+                ...message,
+                text: newText,
+                editedAt: new Date().toISOString(),
+              }
+            : message,
         ),
       };
     });
@@ -701,7 +765,7 @@ function handleSelectDirectContact(contactId: string) {
       getSampleMessages(conversationId, selectedConversation.name);
 
     const targetMessage = existingMessages.find(
-      (item) => item.id === message.id
+      (item) => item.id === message.id,
     );
 
     if (!targetMessage) return;
@@ -709,13 +773,13 @@ function handleSelectDirectContact(contactId: string) {
     if (targetMessage.pinnedAt) {
       setPinLimitNotice(null);
     } else {
-      const pinnedCount = existingMessages.filter(
-        (item) => Boolean(item.pinnedAt)
+      const pinnedCount = existingMessages.filter((item) =>
+        Boolean(item.pinnedAt),
       ).length;
 
       if (pinnedCount >= MAX_PINNED_MESSAGES) {
         setPinLimitNotice(
-          `You can only pin ${MAX_PINNED_MESSAGES} messages in a conversation. Unpin one to make room.`
+          `You can only pin ${MAX_PINNED_MESSAGES} messages in a conversation. Unpin one to make room.`,
         );
         return;
       }
@@ -766,13 +830,15 @@ function handleSelectDirectContact(contactId: string) {
         previousMessages[conversationId] ??
         getSampleMessages(
           conversationId,
-          conversations.find((conversation) => conversation.id === conversationId)?.name ?? ""
+          conversations.find(
+            (conversation) => conversation.id === conversationId,
+          )?.name ?? "",
         );
 
       return {
         ...previousMessages,
         [conversationId]: existingMessages.filter(
-          (existingMessage) => existingMessage.id !== message.id
+          (existingMessage) => existingMessage.id !== message.id,
         ),
       };
     });
@@ -791,8 +857,7 @@ function handleSelectDirectContact(contactId: string) {
   function handleForwardMessage(conversationIds: string[]) {
     if (!messageToForward) return;
 
-    const { message, conversationId: sourceConversationId } =
-      messageToForward;
+    const { message, conversationId: sourceConversationId } = messageToForward;
 
     const forwardedAt = new Date().toLocaleTimeString([], {
       hour: "2-digit",
@@ -804,7 +869,7 @@ function handleSelectDirectContact(contactId: string) {
 
       for (const recipientId of conversationIds) {
         const recipient = conversations.find(
-          (conversation) => conversation.id === recipientId
+          (conversation) => conversation.id === recipientId,
         );
 
         if (!recipient) continue;
@@ -823,13 +888,10 @@ function handleSelectDirectContact(contactId: string) {
             messageId: message.id,
             conversationId: sourceConversationId,
           },
-          senderId: CURRENT_USER_ID
+          senderId: CURRENT_USER_ID,
         };
 
-        updatedMessages[recipientId] = [
-          ...existingMessages,
-          forwardedMessage,
-        ];
+        updatedMessages[recipientId] = [...existingMessages, forwardedMessage];
       }
 
       return updatedMessages;
@@ -847,7 +909,7 @@ function handleSelectDirectContact(contactId: string) {
         }));
 
       const remainingConversations = previousConversations.filter(
-        (conversation) => !selectedIds.has(conversation.id)
+        (conversation) => !selectedIds.has(conversation.id),
       );
 
       return [...updatedRecipients, ...remainingConversations];
@@ -961,38 +1023,36 @@ function handleSelectDirectContact(contactId: string) {
   }
 
   function handlePromoteGroupMember(participantId: string) {
-  if (!selectedConversation || selectedConversation.type !== "group") {
-    return;
-  }
+    if (!selectedConversation || selectedConversation.type !== "group") {
+      return;
+    }
 
-  if (selectedConversation.createdBy !== CURRENT_USER_ID) {
-    return;
-  }
+    if (selectedConversation.createdBy !== CURRENT_USER_ID) {
+      return;
+    }
 
-  setConversations((previous) =>
-    previous.map((conversation) =>
-      conversation.id === selectedConversation.id &&
-      conversation.type === "group"
-        ? {
-            ...conversation,
-            participants: conversation.participants.map((participant) =>
-              participant.id === participantId
-                ? { ...participant, role: "admin" as const }
-                : participant
-            ),
-          }
-        : conversation
-    )
-  );
-}
+    setConversations((previous) =>
+      previous.map((conversation) =>
+        conversation.id === selectedConversation.id &&
+        conversation.type === "group"
+          ? {
+              ...conversation,
+              participants: conversation.participants.map((participant) =>
+                participant.id === participantId
+                  ? { ...participant, role: "admin" as const }
+                  : participant,
+              ),
+            }
+          : conversation,
+      ),
+    );
+  }
 
   function handlePreviousSearchResult() {
     if (matchingMessages.length === 0) return;
 
     setCurrentSearchResultIndex((current) =>
-      current === 0
-        ? matchingMessages.length - 1
-        : current - 1,
+      current === 0 ? matchingMessages.length - 1 : current - 1,
     );
   }
 
@@ -1035,12 +1095,11 @@ function handleSelectDirectContact(contactId: string) {
   function toggleBlockContact() {
     if (!selectedConversation) return;
 
-    const isCurrentlyBlocked =
-      blockedConversationIds.includes(selectedConversation.id);
-
-    setConfirmationAction(
-      isCurrentlyBlocked ? "unblock" : "block",
+    const isCurrentlyBlocked = blockedConversationIds.includes(
+      selectedConversation.id,
     );
+
+    setConfirmationAction(isCurrentlyBlocked ? "unblock" : "block");
   }
 
   function handleConfirmAction() {
@@ -1073,16 +1132,16 @@ function handleSelectDirectContact(contactId: string) {
     setConfirmationAction(null);
   }
 
-function handleCreateBroadcast(name: string, recipientIds: string[]) {
-  const newBroadcast = createBroadcastList({
-    name,
-    recipientIds,
-  });
+  function handleCreateBroadcast(name: string, recipientIds: string[]) {
+    const newBroadcast = createBroadcastList({
+      name,
+      recipientIds,
+    });
 
-  setBroadcastLists((previous) => [...previous, newBroadcast]);
-  setSelectedBroadcastId(newBroadcast.id);
-  setIsCreateBroadcastOpen(false);
-}
+    setBroadcastLists((previous) => [...previous, newBroadcast]);
+    setSelectedBroadcastId(newBroadcast.id);
+    setIsCreateBroadcastOpen(false);
+  }
 
   function handleSendMessage(text: string) {
     if (!selectedConversation) return;
@@ -1101,15 +1160,15 @@ function handleCreateBroadcast(name: string, recipientIds: string[]) {
       status: "sent",
       ...(replyingToMessage
         ? {
-          replyTo: replyingToMessage.id,
-          replyToText: replyingToMessage.text,
-          replyToSender: replyingToMessage.sender,
-          replyToSenderId:
-            replyingToMessage.senderId ??
-            (replyingToMessage.sender === "me"
-              ? CURRENT_USER_ID
-              : `${selectedConversation.id}-contact`),
-            }
+            replyTo: replyingToMessage.id,
+            replyToText: replyingToMessage.text,
+            replyToSender: replyingToMessage.sender,
+            replyToSenderId:
+              replyingToMessage.senderId ??
+              (replyingToMessage.sender === "me"
+                ? CURRENT_USER_ID
+                : `${selectedConversation.id}-contact`),
+          }
         : {}),
     };
 
@@ -1118,10 +1177,7 @@ function handleCreateBroadcast(name: string, recipientIds: string[]) {
     setConversationMessages((previousMessages) => {
       const existingMessages =
         previousMessages[conversationId] ??
-        getSampleMessages(
-          conversationId,
-          selectedConversation.name,
-        );
+        getSampleMessages(conversationId, selectedConversation.name);
 
       return {
         ...previousMessages,
@@ -1130,15 +1186,14 @@ function handleCreateBroadcast(name: string, recipientIds: string[]) {
     });
 
     setConversations((previousConversations) => {
-      const updatedConversations = previousConversations.map(
-        (conversation) =>
-          conversation.id === conversationId
-            ? {
+      const updatedConversations = previousConversations.map((conversation) =>
+        conversation.id === conversationId
+          ? {
               ...conversation,
               lastMessage: `You: ${text}`,
               timestamp: newMessage.timestamp,
             }
-            : conversation,
+          : conversation,
       );
 
       return updatedConversations.sort((a, b) => {
@@ -1149,10 +1204,81 @@ function handleCreateBroadcast(name: string, recipientIds: string[]) {
     });
   }
 
-  function updateMessageStatus(
-    messageId: string,
-    status: MessageStatus,
-  ) {
+  const handleStatusReply = useCallback(
+  (status: StatusUpdate, message: string) => {
+
+    const recipientConversation = conversations.find(
+      (conversation) =>
+        conversation.type === "direct" &&
+        conversation.name === status.authorName
+    );
+
+
+    
+
+    if (!recipientConversation) {
+      console.warn(
+        `No direct conversation found for ${status.authorName}`
+      );
+      return;
+    }
+
+    const newMessage: Message = {
+      id: crypto.randomUUID(),
+      text: message,
+      sender: "me",
+      senderId: CURRENT_USER_ID,
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      status: "sent",
+      replyToStatus: status.id,
+      replyToStatusPreview: {
+        authorName: status.authorName,
+        type: status.type,
+        content: status.content,
+        background: status.background,
+        mediaUrl: status.mediaUrl,
+      },
+    };
+
+    setConversationMessages((previousMessages) => {
+      const existingMessages =
+        previousMessages[recipientConversation.id] ??
+        getSampleMessages(
+          recipientConversation.id,
+          recipientConversation.name
+        );
+
+      return {
+        ...previousMessages,
+        [recipientConversation.id]: [...existingMessages, newMessage],
+      };
+    });
+
+    setConversations((previousConversations) => {
+      const updated = previousConversations.map((conversation) =>
+        conversation.id === recipientConversation.id
+          ? {
+              ...conversation,
+              lastMessage: `You: ${message}`,
+              timestamp: newMessage.timestamp,
+            }
+          : conversation
+      );
+
+      return updated.sort((a, b) => {
+        if (a.id === recipientConversation.id) return -1;
+        if (b.id === recipientConversation.id) return 1;
+        return 0;
+      });
+    });
+  },
+  [conversations]
+);
+
+  function updateMessageStatus(messageId: string, status: MessageStatus) {
     if (!selectedConversation) return;
 
     const conversationId = selectedConversation.id;
@@ -1160,10 +1286,7 @@ function handleCreateBroadcast(name: string, recipientIds: string[]) {
     setConversationMessages((previousMessages) => {
       const existingMessages =
         previousMessages[conversationId] ??
-        getSampleMessages(
-          conversationId,
-          selectedConversation.name,
-        );
+        getSampleMessages(conversationId, selectedConversation.name);
 
       return {
         ...previousMessages,
@@ -1188,10 +1311,7 @@ function handleCreateBroadcast(name: string, recipientIds: string[]) {
 
     const currentMessages =
       conversationMessages[selectedConversation.id] ??
-      getSampleMessages(
-        selectedConversation.id,
-        selectedConversation.name,
-      );
+      getSampleMessages(selectedConversation.id, selectedConversation.name);
 
     return (
       [...currentMessages]
@@ -1199,25 +1319,29 @@ function handleCreateBroadcast(name: string, recipientIds: string[]) {
         .find((message) =>
           message.senderId
             ? message.senderId === CURRENT_USER_ID
-            : message.sender === "me"
+            : message.sender === "me",
         ) ?? null
     );
   }
 
-function handleSelectConversation(conversationId: string) {
-  setSelectedConversationId(conversationId);
-  setReplyingToMessage(null);
+  function handleSelectConversation(conversationId: string) {
+    setSelectedConversationId(conversationId);
+    setReplyingToMessage(null);
 
-  setConversations((previousConversations) =>
-    previousConversations.map((conversation) =>
-      conversation.id === conversationId
-        ? { ...conversation, unread: 0 }
-        : conversation,
-    ),
-  );
-}
+    setConversations((previousConversations) =>
+      previousConversations.map((conversation) =>
+        conversation.id === conversationId
+          ? { ...conversation, unread: 0 }
+          : conversation,
+      ),
+    );
+  }
 
   const latestOutgoingMessage = getLatestOutgoingMessage();
+
+useEffect(() => {
+  setCurrentTime(Date.now());
+}, []);
 
   return (
     <AppShell>
@@ -1320,40 +1444,65 @@ function handleSelectConversation(conversationId: string) {
         />
 
         {isStarredMessagesOpen ? (
-            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-              <StarredMessages
-                messages={starredMessages}
-                onBack={handleCloseStarredMessages}
-                onSelectMessage={(conversationId, messageId) => {
-                  setPendingMessageId(messageId);
-                  handleSelectConversation(conversationId);
-                  setIsStarredMessagesOpen(false);
-                  setActiveNavigationItem("Messages");
-                }}
-              />
-            </div>
-          ) : activeNavigationItem === "Broadcast" && selectedBroadcast ? (
-                <BroadcastDetailScreen
-                  onDelete={() => setIsDeleteBroadcastOpen(true)}
-                  onManageRecipients={() => setIsEditBroadcastRecipientsOpen(true)}
-                  onRename={() => setIsRenameBroadcastOpen(true)}
-                  broadcast={selectedBroadcast}
-                  recipients={selectedBroadcastRecipients}
-                  messages={broadcastMessages[selectedBroadcast.id] ?? []}
-                  onSendMessage={handleSendBroadcastMessage}
-                  onBack={() => setSelectedBroadcastId(null)}
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            <StarredMessages
+              messages={starredMessages}
+              onBack={handleCloseStarredMessages}
+              onSelectMessage={(conversationId, messageId) => {
+                setPendingMessageId(messageId);
+                handleSelectConversation(conversationId);
+                setIsStarredMessagesOpen(false);
+                setActiveNavigationItem("Messages");
+              }}
+            />
+          </div>
+        ) : activeNavigationItem === "Status" ? (
+            <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+              {isCreatingTextStatus ? (
+                <CreateTextStatus
+                  onBack={() => setIsCreatingTextStatus(false)}
+                  onPublish={handlePublishTextStatus}
                 />
-              ) : activeNavigationItem === "Broadcast" ? (
-                <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-                  <BroadcastListScreen
-                    broadcastLists={broadcastLists}
-                    onCreateBroadcast={() => setIsCreateBroadcastOpen(true)}
-                    onSelectBroadcast={(broadcastId) => {
-                      setSelectedBroadcastId(broadcastId);
-                    }}
-                  />
-                </div>
-          )  : (
+              ) : (
+                <StatusListScreen
+                  statusGroups={statusGroups}
+                  currentUserId={CURRENT_USER_ID}
+                  onCreateStatus={() => setIsCreatingTextStatus(true)}
+                  onSelectStatus={(group) => setSelectedStatusGroup(group)}
+                />
+              )}
+
+              {selectedStatusGroup && (
+                <StatusViewer
+                  onReply={handleStatusReply}
+                  onViewStatus={handleViewStatus}
+                  group={selectedStatusGroup}
+                  onClose={() => setSelectedStatusGroup(null)}
+                />
+              )}
+            </div>
+        ) : activeNavigationItem === "Broadcast" && selectedBroadcast ? (
+          <BroadcastDetailScreen
+            onDelete={() => setIsDeleteBroadcastOpen(true)}
+            onManageRecipients={() => setIsEditBroadcastRecipientsOpen(true)}
+            onRename={() => setIsRenameBroadcastOpen(true)}
+            broadcast={selectedBroadcast}
+            recipients={selectedBroadcastRecipients}
+            messages={broadcastMessages[selectedBroadcast.id] ?? []}
+            onSendMessage={handleSendBroadcastMessage}
+            onBack={() => setSelectedBroadcastId(null)}
+          />
+        ) : activeNavigationItem === "Broadcast" ? (
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            <BroadcastListScreen
+              broadcastLists={broadcastLists}
+              onCreateBroadcast={() => setIsCreateBroadcastOpen(true)}
+              onSelectBroadcast={(broadcastId) => {
+                setSelectedBroadcastId(broadcastId);
+              }}
+            />
+          </div>
+        ) : (
           <>
             <ConversationList
               onNewConversation={() => setIsNewConversationOpen(true)}
@@ -1374,18 +1523,18 @@ function handleSelectConversation(conversationId: string) {
               {selectedConversation ? (
                 <div className="flex flex-1 flex-col overflow-hidden">
                   <ChatHeader
-                  onViewPinnedMessages={() => setIsPinnedMessagesOpen(true)}
-                  isGroupMuted={
-                    selectedConversation?.type === "group"
-                      ? selectedConversation.isMuted ?? false
-                      : false
-                  }
-                  onToggleGroupMute={handleToggleGroupMute}
-                  isGroupCreator={
-                    selectedConversation?.type === "group" &&
-                    selectedConversation.createdBy === CURRENT_USER_ID
-                  }
-                  photoUrl={
+                    onViewPinnedMessages={() => setIsPinnedMessagesOpen(true)}
+                    isGroupMuted={
+                      selectedConversation?.type === "group"
+                        ? (selectedConversation.isMuted ?? false)
+                        : false
+                    }
+                    onToggleGroupMute={handleToggleGroupMute}
+                    isGroupCreator={
+                      selectedConversation?.type === "group" &&
+                      selectedConversation.createdBy === CURRENT_USER_ID
+                    }
+                    photoUrl={
                       selectedConversation?.type === "group"
                         ? selectedConversation.photoUrl
                         : undefined
@@ -1414,21 +1563,17 @@ function handleSelectConversation(conversationId: string) {
                     onLeaveGroup={() => setIsLeaveGroupConfirmationOpen(true)}
                   />
 
-                  {mutedConversationIds.includes(
-                    selectedConversation.id,
-                  ) && (
-                      <p className="border-b border-border px-6 py-2 text-xs text-text-secondary">
-                        Notifications are muted for this conversation.
-                      </p>
-                    )}
+                  {mutedConversationIds.includes(selectedConversation.id) && (
+                    <p className="border-b border-border px-6 py-2 text-xs text-text-secondary">
+                      Notifications are muted for this conversation.
+                    </p>
+                  )}
 
-                  {blockedConversationIds.includes(
-                    selectedConversation.id,
-                  ) && (
-                      <p className="border-b border-border px-6 py-2 text-xs text-red-500">
-                        This contact is blocked in this demo.
-                      </p>
-                    )}
+                  {blockedConversationIds.includes(selectedConversation.id) && (
+                    <p className="border-b border-border px-6 py-2 text-xs text-red-500">
+                      This contact is blocked in this demo.
+                    </p>
+                  )}
 
                   {isSearchOpen && (
                     <MessageSearch
@@ -1456,7 +1601,10 @@ function handleSelectConversation(conversationId: string) {
                       className="flex items-center justify-between gap-3 border-b border-border bg-surface px-5 py-3"
                     >
                       <div className="flex items-center gap-2">
-                        <Pin size={16} className="shrink-0 text-text-secondary" />
+                        <Pin
+                          size={16}
+                          className="shrink-0 text-text-secondary"
+                        />
 
                         <p className="text-sm text-text-secondary">
                           {pinLimitNotice}
@@ -1515,11 +1663,11 @@ function handleSelectConversation(conversationId: string) {
                       onClose={() => setIsPinnedMessagesOpen(false)}
                       onSelectMessage={(messageId) => {
                         setPendingMessageId(messageId);
-                        setIsPinnedMessagesOpen(false)
+                        setIsPinnedMessagesOpen(false);
                       }}
                       onUnpin={(messageId) => {
                         const message = pinnedMessages.find(
-                          (item) => item.id === messageId
+                          (item) => item.id === messageId,
                         );
 
                         if (message) {
@@ -1572,7 +1720,9 @@ function handleSelectConversation(conversationId: string) {
 
                         <button
                           type="button"
-                          disabled={latestOutgoingMessage.status !== "delivered"}
+                          disabled={
+                            latestOutgoingMessage.status !== "delivered"
+                          }
                           onClick={() =>
                             updateMessageStatus(
                               latestOutgoingMessage.id,
@@ -1620,8 +1770,9 @@ function handleSelectConversation(conversationId: string) {
               )}
             </section>
 
-            {isContactDetailsOpen && selectedConversation && (
-              selectedConversation.type === "group" ? (
+            {isContactDetailsOpen &&
+              selectedConversation &&
+              (selectedConversation.type === "group" ? (
                 <GroupDetails
                   isMuted={selectedConversation.isMuted ?? false}
                   onToggleMute={handleToggleGroupMute}
@@ -1646,8 +1797,7 @@ function handleSelectConversation(conversationId: string) {
                   initials={selectedConversation.initials}
                   onClose={() => setIsContactDetailsOpen(false)}
                 />
-              )
-            )}
+              ))}
           </>
         )}
 
@@ -1691,13 +1841,14 @@ function handleSelectConversation(conversationId: string) {
           />
         )}
 
-        {isEditGroupDescriptionOpen && selectedConversation?.type === "group" && (
-          <EditGroupDescriptionDialog
-            initialDescription={selectedConversation.description}
-            onClose={() => setIsEditGroupDescriptionOpen(false)}
-            onSave={handleSaveGroupDescription}
-          />
-        )}
+        {isEditGroupDescriptionOpen &&
+          selectedConversation?.type === "group" && (
+            <EditGroupDescriptionDialog
+              initialDescription={selectedConversation.description}
+              onClose={() => setIsEditGroupDescriptionOpen(false)}
+              onSave={handleSaveGroupDescription}
+            />
+          )}
 
         {isEditGroupPhotoOpen && selectedConversation?.type === "group" && (
           <EditGroupPhotoDialog
@@ -1719,7 +1870,7 @@ function handleSelectConversation(conversationId: string) {
           <AddGroupMembersDialog
             contacts={availableContacts}
             existingMemberIds={selectedConversationParticipants.map(
-              (participant) => participant.id
+              (participant) => participant.id,
             )}
             onClose={() => setIsAddGroupMembersOpen(false)}
             onAddMembers={handleAddGroupMembers}
@@ -1755,14 +1906,14 @@ function handleSelectConversation(conversationId: string) {
         )}
 
         <ConfirmationModal
-        isOpen={isLeaveGroupConfirmationOpen}
-        title="Leave this group?"
-        description="You will no longer receive messages or updates from this group."
-        confirmLabel="Leave group"
-        destructive
-        onConfirm={handleLeaveGroup}
-        onCancel={() => setIsLeaveGroupConfirmationOpen(false)}
-      />
+          isOpen={isLeaveGroupConfirmationOpen}
+          title="Leave this group?"
+          description="You will no longer receive messages or updates from this group."
+          confirmLabel="Leave group"
+          destructive
+          onConfirm={handleLeaveGroup}
+          onCancel={() => setIsLeaveGroupConfirmationOpen(false)}
+        />
       </main>
     </AppShell>
   );
