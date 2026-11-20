@@ -15,6 +15,14 @@ import {
   type ConversationParticipant,
 } from "@/data/conversation";
 
+import BroadcastListScreen from "@/components/broadcast-list-screen";
+import CreateBroadcastDialog from "@/components/create-broadcast-dialog";
+
+import {
+  createBroadcastList,
+  type BroadcastList,
+} from "@/data/broadcast";
+
 import ChatHeader from "@/components/chat-header";
 import MessageList from "@/components/message-list";
 import MessageComposer from "@/components/message-composer";
@@ -31,6 +39,7 @@ import AddGroupMembersDialog from "@/components/add-group-members-dialog";
 import EditGroupDescriptionDialog from "@/components/edit-group-description-dialog";
 import EditGroupPhotoDialog from "@/components/edit-photo-dialog";
 import EditGroupNameDialog from "@/components/edit-group-name-dialog";
+import BroadcastDetailScreen from "@/components/broadcast-detail-screen";
 
 import { CURRENT_USER, CURRENT_USER_ID } from "@/data/users";
 
@@ -213,6 +222,22 @@ const [isEditGroupNameOpen, setIsEditGroupNameOpen] = useState(false);
   
 
   const [isAddGroupMembersOpen, setIsAddGroupMembersOpen] = useState(false);
+
+const [broadcastLists, setBroadcastLists] = useState<BroadcastList[]>([]);
+const [isCreateBroadcastOpen, setIsCreateBroadcastOpen] =
+  useState(false);
+const [selectedBroadcastId, setSelectedBroadcastId] =
+  useState<string | null>(null);
+
+const selectedBroadcast = broadcastLists.find(
+  (broadcast) => broadcast.id === selectedBroadcastId
+);
+
+const selectedBroadcastRecipients = selectedBroadcast
+  ? availableContacts.filter((contact) =>
+      selectedBroadcast.recipientIds.includes(contact.id)
+    )
+  : [];
 
 function handleCancelEditing() {
     setMessageBeingEdited(null);
@@ -889,6 +914,17 @@ function handleSelectDirectContact(contactId: string) {
     setConfirmationAction(null);
   }
 
+function handleCreateBroadcast(name: string, recipientIds: string[]) {
+  const newBroadcast = createBroadcastList({
+    name,
+    recipientIds,
+  });
+
+  setBroadcastLists((previous) => [...previous, newBroadcast]);
+  setSelectedBroadcastId(newBroadcast.id);
+  setIsCreateBroadcastOpen(false);
+}
+
   function handleSendMessage(text: string) {
     if (!selectedConversation) return;
 
@@ -1125,19 +1161,35 @@ function handleSelectConversation(conversationId: string) {
         />
 
         {isStarredMessagesOpen ? (
-          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-            <StarredMessages
-              messages={starredMessages}
-              onBack={handleCloseStarredMessages}
-              onSelectMessage={(conversationId, messageId) => {
-                setPendingMessageId(messageId);
-                handleSelectConversation(conversationId);
-                setIsStarredMessagesOpen(false);
-                setActiveNavigationItem("Messages");
-              }}
-            />
-          </div>
-        ) : (
+            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+              <StarredMessages
+                messages={starredMessages}
+                onBack={handleCloseStarredMessages}
+                onSelectMessage={(conversationId, messageId) => {
+                  setPendingMessageId(messageId);
+                  handleSelectConversation(conversationId);
+                  setIsStarredMessagesOpen(false);
+                  setActiveNavigationItem("Messages");
+                }}
+              />
+            </div>
+          ) : activeNavigationItem === "Broadcast" && selectedBroadcast ? (
+                <BroadcastDetailScreen
+                  broadcast={selectedBroadcast}
+                  recipients={selectedBroadcastRecipients}
+                  onBack={() => setSelectedBroadcastId(null)}
+                />
+              ) : activeNavigationItem === "Broadcast" ? (
+                <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+                  <BroadcastListScreen
+                    broadcastLists={broadcastLists}
+                    onCreateBroadcast={() => setIsCreateBroadcastOpen(true)}
+                    onSelectBroadcast={(broadcastId) => {
+                      setSelectedBroadcastId(broadcastId);
+                    }}
+                  />
+                </div>
+          )  : (
           <>
             <ConversationList
               onNewConversation={() => setIsNewConversationOpen(true)}
@@ -1442,6 +1494,13 @@ function handleSelectConversation(conversationId: string) {
             onCreate={handleCreateGroup}
           />
         )}
+
+        <CreateBroadcastDialog
+          isOpen={isCreateBroadcastOpen}
+          contacts={availableContacts}
+          onClose={() => setIsCreateBroadcastOpen(false)}
+          onCreate={handleCreateBroadcast}
+        />
 
         <ConfirmationModal
           isOpen={memberToRemove !== null}

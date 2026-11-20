@@ -8,6 +8,7 @@ import {
   UserGroup,
   CircleDashed,
   Star,
+  RadioTower,
   type LucideIcon,
 } from "lucide-react";
 
@@ -27,9 +28,11 @@ const navigationItems: NavigationItem[] = [
   { label: "Messages", icon: MessageSquare },
   { label: "Contacts", icon: Users },
   { label: "Group", icon: UserGroup },
+  { label: "Broadcast", icon: RadioTower },
   { label: "Status", icon: CircleDashed },
   { label: "Starred Messages", icon: Star },
   { label: "Settings", icon: Settings },
+  
 ];
 
 export default function NavigationRail({
