@@ -39,14 +39,14 @@
 :root[data-theme="light"] {
   color-scheme: light;
 
-  --background: #f7f9fa;
-  --foreground: #171c20;
+  --background: #eef1f2;
+  --foreground: #20282d;
 
-  --surface: #ffffff;
-  --surface-elevated: #eef2f4;
-  --border: #dce2e6;
+  --surface: #f7f9f9;
+  --surface-elevated: #e6ebed;
+  --border: #d4dcdf;
 
-  --text-secondary: #66727c;
+  --text-secondary: #68757d;
   --accent: #287f9f;
 }
 
