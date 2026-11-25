@@ -22,6 +22,7 @@ type CallHistoryScreenProps = {
   onSelectConversation: (conversationId: string) => void;
   onDeleteCall: (callId: string) => void;
   onClearHistory: () => void;
+  onViewDetails: (call: CallRecord) => void;
 };
 
 function formatCallTime(timestamp: string) {
@@ -107,7 +108,7 @@ const groupOrder = [
 export default function CallHistoryScreen({
   calls,
   onCall,
-  onSelectConversation,
+  onViewDetails,
   onDeleteCall,
   onClearHistory,
 }: CallHistoryScreenProps) {
@@ -288,10 +289,8 @@ export default function CallHistoryScreen({
                       >
                         <button
                           type="button"
-                          onClick={() =>
-                            onSelectConversation(call.conversationId)
-                          }
-                          aria-label={`Open conversation with ${call.participantName}`}
+                          onClick={() => onViewDetails(call)}
+                          aria-label={`View call details for ${call.participantName}`}
                           className="flex min-w-0 flex-1 items-center gap-3 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                         >
                           <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-elevated text-sm font-semibold text-foreground">

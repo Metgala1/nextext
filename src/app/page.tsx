@@ -23,9 +23,11 @@ import {
   type BroadcastMessage,
 } from "@/data/broadcast";
 
+import type { DirectConversation } from "@/data/conversation";
+
 import ActiveCallScreen from "@/components/active-call-screen";
 import type { CallRecord } from "@/data/call";
-import CallHistoryScreen from "@/components/call-history-screen";
+import CallHistoryScreen from "@/components/call-history-screen"
 import { sampleCalls } from "@/data/call-samples";
 
 
@@ -73,6 +75,8 @@ import DeleteBroadcastDialog from "@/components/delete-broadcast-dialog";
 import StatusPrivacyScreen from "@/components/status-privacy-screen";
 import { removeExpiredStatuses } from "@/lib/status-utils";
 import IncomingCallScreen from "@/components/incoming-call-screen";
+import CallDetailsScreen from "@/components/call-details-screen";
+import ContactsScreen from "@/components/contacts-screen";
 
 import { CURRENT_USER, CURRENT_USER_ID } from "@/data/users";
 
@@ -328,10 +332,16 @@ const [isStatusPrivacyOpen, setIsStatusPrivacyOpen] = useState(false);
 
 const [activeCall, setActiveCall] = useState<CallRecord | null>(null);
 const [callHistory, setCallHistory] = useState<CallRecord[]>(sampleCalls);
+const [isCallHistoryLoaded, setIsCallHistoryLoaded] =
+  useState(false);
 const [incomingCall, setIncomingCall] = useState<CallRecord | null>(null);
 const [callToDelete, setCallToDelete] = useState<string | null>(null);
 const [isClearCallHistoryOpen, setIsClearCallHistoryOpen] =
   useState(false);
+const [selectedCallDetails, setSelectedCallDetails] =
+  useState<CallRecord | null>(null);
+const [selectedContactDetails, setSelectedContactDetails] =
+  useState<DirectConversation | null>(null);
 
 function handleStartVoiceCall() {
   if (!selectedConversation) return;
@@ -1649,6 +1659,33 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
+  try {
+    const savedCalls = localStorage.getItem("nextext-call-history");
+
+    if (savedCalls) {
+      setCallHistory(JSON.parse(savedCalls) as CallRecord[]);
+    }
+  } catch (error) {
+    console.error("Failed to load call history:", error);
+  } finally {
+    setIsCallHistoryLoaded(true);
+  }
+}, []);
+
+useEffect(() => {
+  if (!isCallHistoryLoaded) return;
+
+  try {
+    localStorage.setItem(
+      "nextext-call-history",
+      JSON.stringify(callHistory)
+    );
+  } catch (error) {
+    console.error("Failed to save call history:", error);
+  }
+}, [callHistory, isCallHistoryLoaded]);
+
+useEffect(() => {
   if (!incomingCall) return;
 
   const ringingCallId = incomingCall.id;
@@ -1790,54 +1827,101 @@ useEffect(() => {
               }}
             />
           </div>
-        ) : activeNavigationItem === "Calls" ? (
+        ) : activeNavigationItem === "Contacts" ? (
+            <div className="flex min-w-0 flex-1 overflow-hidden">
+              <ContactsScreen
+                contacts={conversations.filter(
+                  (conversation): conversation is DirectConversation =>
+                    conversation.type === "direct"
+                )}
+                onSelectContact={(conversationId) => {
+                  setSelectedContactDetails(null);
+                  handleSelectConversation(conversationId);
+                  setActiveNavigationItem("Messages");
+                }}
+                onViewDetails={(contact) => {
+                  setSelectedContactDetails(contact);
+                }}
+              />
+              
+
+              {selectedContactDetails && (
+                <ContactDetails
+                  name={selectedContactDetails.name}
+                  initials={selectedContactDetails.initials}
+                  onClose={() => setSelectedContactDetails(null)}
+                />
+              )}
+            </div>
+            ) :  activeNavigationItem === "Calls" ? (
               <div className="flex h-screen min-w-0 flex-1 flex-col overflow-hidden">
+                
                 {incomingCall ? (
-                    <IncomingCallScreen
-                      call={incomingCall}
-                      onAccept={handleAcceptIncomingCall}
-                      onDecline={handleDeclineIncomingCall}
-                    />
-                  ) : activeCall ? (
-                    <ActiveCallScreen
-                      call={activeCall}
-                      onEnd={handleEndCall}
-                    />
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={simulateIncomingCall}
-                        className="mb-4 rounded-default border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-elevated"
-                      >
-                        Simulate incoming call
-                      </button>
+                  <IncomingCallScreen
+                    call={incomingCall}
+                    onAccept={handleAcceptIncomingCall}
+                    onDecline={handleDeclineIncomingCall}
+                  />
+                ) : activeCall ? (
+                  <ActiveCallScreen
+                    call={activeCall}
+                    onEnd={handleEndCall}
+                  />
+                ) : selectedCallDetails ? (
+                  <CallDetailsScreen
+                  call={selectedCallDetails}
+                  onClose={() => setSelectedCallDetails(null)}
+                  onCall={(call) => {
+                    setSelectedCallDetails(null);
+                    startCall(
+                      call.conversationId,
+                      call.participantName,
+                      call.participantInitials,
+                      call.type,
+                    );
+                  }}
+                  onViewConversation={(conversationId) => {
+                    setSelectedCallDetails(null);
+                    handleSelectConversation(conversationId);
+                    setActiveNavigationItem("Messages");
+                  }}
+                />
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={simulateIncomingCall}
+                      className="mb-4 rounded-default border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-elevated"
+                    >
+                      Simulate incoming call
+                    </button>
 
                     <CallHistoryScreen
-                          onClearHistory={() => setIsClearCallHistoryOpen(true)}
-                          onDeleteCall={handleDeleteCall}
-                          calls={callHistory.filter(
-                            (call) =>
-                              call.status === "completed" ||
-                              call.status === "missed" ||
-                              call.status === "declined",
-                          )}
-                          onCall={(call) => {
-                            startCall(
-                              call.conversationId,
-                              call.participantName,
-                              call.participantInitials,
-                              call.type,
-                            );
-                          }}
-                          onSelectConversation={(conversationId) => {
-                            handleSelectConversation(conversationId);
-                            setActiveNavigationItem("Messages");
-                          }}
-                        />
-                    </>
+                      onViewDetails={setSelectedCallDetails}
+                      onClearHistory={() => setIsClearCallHistoryOpen(true)}
+                      onDeleteCall={handleDeleteCall}
+                      calls={callHistory.filter(
+                        (call) =>
+                          call.status === "completed" ||
+                          call.status === "missed" ||
+                          call.status === "declined",
+                      )}
+                      onCall={(call) => {
+                        startCall(
+                          call.conversationId,
+                          call.participantName,
+                          call.participantInitials,
+                          call.type,
+                        );
+                      }}
+                      onSelectConversation={(conversationId) => {
+                        handleSelectConversation(conversationId);
+                        setActiveNavigationItem("Messages");
+                      }}
+                    />
+                  </>
+                )}
 
-                  )}
               </div>
             ) : activeNavigationItem === "Status" ? (
             <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
