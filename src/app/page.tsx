@@ -23,6 +23,13 @@ import {
   type BroadcastMessage,
 } from "@/data/broadcast";
 
+import ActiveCallScreen from "@/components/active-call-screen";
+import type { CallRecord } from "@/data/call";
+import CallHistoryScreen from "@/components/call-history-screen";
+import { sampleCalls } from "@/data/call-samples";
+
+
+
 import StatusListScreen from "@/components/status-list-screen";
 import { sampleStatusUpdates } from "@/data/status-samples";
 import { groupStatusUpdates } from "@/lib/status-utils";
@@ -65,6 +72,7 @@ import EditBroadcastRecipientsDialog from "@/components/edit-broadcast-recipient
 import DeleteBroadcastDialog from "@/components/delete-broadcast-dialog";
 import StatusPrivacyScreen from "@/components/status-privacy-screen";
 import { removeExpiredStatuses } from "@/lib/status-utils";
+import IncomingCallScreen from "@/components/incoming-call-screen";
 
 import { CURRENT_USER, CURRENT_USER_ID } from "@/data/users";
 
@@ -317,6 +325,158 @@ const [statusPrivacy, setStatusPrivacy] =
 const activeStatusMediaUrlsRef = useRef<Set<string>>(new Set());
 
 const [isStatusPrivacyOpen, setIsStatusPrivacyOpen] = useState(false);
+
+const [activeCall, setActiveCall] = useState<CallRecord | null>(null);
+const [callHistory, setCallHistory] = useState<CallRecord[]>(sampleCalls);
+const [incomingCall, setIncomingCall] = useState<CallRecord | null>(null);
+const [callToDelete, setCallToDelete] = useState<string | null>(null);
+const [isClearCallHistoryOpen, setIsClearCallHistoryOpen] =
+  useState(false);
+
+function handleStartVoiceCall() {
+  if (!selectedConversation) return;
+
+  startCall(
+    selectedConversation.id,
+    selectedConversation.name,
+    selectedConversation.initials,
+    "voice",
+  );
+}
+
+function handleStartVideoCall() {
+  if (!selectedConversation) return;
+
+  startCall(
+    selectedConversation.id,
+    selectedConversation.name,
+    selectedConversation.initials,
+    "video",
+  );
+}
+
+function startCall(
+  conversationId: string,
+  participantName: string,
+  participantInitials: string,
+  type: "voice" | "video",
+) {
+  const newCall: CallRecord = {
+    id: crypto.randomUUID(),
+    conversationId,
+    participantId: conversationId,
+    participantName,
+    participantInitials,
+    type,
+    direction: "outgoing",
+    status: "active",
+    startedAt: new Date().toISOString(),
+  };
+
+  setActiveCall(newCall);
+  setActiveNavigationItem("Calls");
+}
+
+function handleEndCall(duration: number) {
+  if (!activeCall) return;
+
+  const endedAt = new Date().toISOString();
+
+  const completedCall: CallRecord = {
+    ...activeCall,
+    status: "completed",
+    endedAt,
+    duration,
+  };
+
+  setCallHistory((previousCalls) => [
+    completedCall,
+    ...previousCalls,
+  ]);
+
+  setActiveCall(null);
+}
+
+function simulateIncomingCall() {
+  if (activeCall || incomingCall) return;
+
+  const conversation = conversations.find(
+    (item) => item.type === "direct",
+  );
+
+  if (!conversation) return;
+
+  setIncomingCall({
+    id: crypto.randomUUID(),
+    conversationId: conversation.id,
+    participantId: conversation.id,
+    participantName: conversation.name,
+    participantInitials: conversation.initials,
+    type: "voice",
+    direction: "incoming",
+    status: "ringing",
+    startedAt: new Date().toISOString(),
+  });
+}
+
+function handleAcceptIncomingCall() {
+  if (!incomingCall) return;
+
+  setActiveCall({
+    ...incomingCall,
+    status: "completed",
+    startedAt: new Date().toISOString(),
+  });
+
+  setIncomingCall(null);
+  setActiveNavigationItem("Calls");
+}
+
+function handleDeclineIncomingCall() {
+  if (!incomingCall) return;
+
+  const declinedCall: CallRecord = {
+    ...incomingCall,
+    status: "declined",
+    endedAt: new Date().toISOString(),
+    duration: 0,
+  };
+
+  setCallHistory((previousCalls) => [
+    declinedCall,
+    ...previousCalls,
+  ]);
+
+  setIncomingCall(null);
+}
+
+const handleDeleteCall = (callId: string) => {
+  setCallToDelete(callId);
+};
+
+const handleConfirmDeleteCall = () => {
+  if (!callToDelete) return;
+
+  setCallHistory((previousCalls) =>
+    previousCalls.filter((call) => call.id !== callToDelete)
+  );
+
+  setCallToDelete(null);
+};
+
+const handleCancelDeleteCall = () => {
+  setCallToDelete(null);
+};
+
+const handleClearCallHistory = () => {
+  setCallHistory([]);
+  setIsClearCallHistoryOpen(false);
+};
+
+const handleCancelClearCallHistory = () => {
+  setIsClearCallHistoryOpen(false);
+};
+
 const handlePublishTextStatus = useCallback(
   (
     content: string,
@@ -1488,6 +1648,32 @@ useEffect(() => {
   setCurrentTime(Date.now());
 }, []);
 
+useEffect(() => {
+  if (!incomingCall) return;
+
+  const ringingCallId = incomingCall.id;
+
+  const timeoutId = window.setTimeout(() => {
+  const missedCall: CallRecord = {
+    ...incomingCall,
+    status: "missed",
+    endedAt: new Date().toISOString(),
+    duration: 0,
+  };
+
+  setCallHistory((previousCalls) => [
+    missedCall,
+    ...previousCalls,
+  ]);
+
+  setIncomingCall(null);
+}, 20_000);
+
+  return () => {
+    window.clearTimeout(timeoutId);
+  };
+}, [incomingCall]);
+
   return (
     <AppShell>
       <main className="flex h-screen overflow-hidden">
@@ -1591,7 +1777,7 @@ useEffect(() => {
           onOpenStarredMessages={handleOpenStarredMessages}
         />
 
-        {isStarredMessagesOpen ? (
+        {activeNavigationItem === "Starred Messages" ? (
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <StarredMessages
               messages={starredMessages}
@@ -1604,7 +1790,56 @@ useEffect(() => {
               }}
             />
           </div>
-        ) : activeNavigationItem === "Status" ? (
+        ) : activeNavigationItem === "Calls" ? (
+              <div className="flex h-screen min-w-0 flex-1 flex-col overflow-hidden">
+                {incomingCall ? (
+                    <IncomingCallScreen
+                      call={incomingCall}
+                      onAccept={handleAcceptIncomingCall}
+                      onDecline={handleDeclineIncomingCall}
+                    />
+                  ) : activeCall ? (
+                    <ActiveCallScreen
+                      call={activeCall}
+                      onEnd={handleEndCall}
+                    />
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={simulateIncomingCall}
+                        className="mb-4 rounded-default border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-elevated"
+                      >
+                        Simulate incoming call
+                      </button>
+
+                    <CallHistoryScreen
+                          onClearHistory={() => setIsClearCallHistoryOpen(true)}
+                          onDeleteCall={handleDeleteCall}
+                          calls={callHistory.filter(
+                            (call) =>
+                              call.status === "completed" ||
+                              call.status === "missed" ||
+                              call.status === "declined",
+                          )}
+                          onCall={(call) => {
+                            startCall(
+                              call.conversationId,
+                              call.participantName,
+                              call.participantInitials,
+                              call.type,
+                            );
+                          }}
+                          onSelectConversation={(conversationId) => {
+                            handleSelectConversation(conversationId);
+                            setActiveNavigationItem("Messages");
+                          }}
+                        />
+                    </>
+
+                  )}
+              </div>
+            ) : activeNavigationItem === "Status" ? (
             <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
               {isCreatingTextStatus ? (
                 <CreateTextStatus
@@ -1673,6 +1908,8 @@ useEffect(() => {
               {selectedConversation ? (
                 <div className="flex flex-1 flex-col overflow-hidden">
                   <ChatHeader
+                    onStartVideoCall={handleStartVideoCall}
+                    onStartVoiceCall={handleStartVoiceCall}
                     onViewPinnedMessages={() => setIsPinnedMessagesOpen(true)}
                     isGroupMuted={
                       selectedConversation?.type === "group"
@@ -2066,6 +2303,26 @@ useEffect(() => {
             />
           </div>
         )}
+
+          <ConfirmationModal
+            isOpen={callToDelete !== null}
+            title="Delete call history entry?"
+            description="This call will be removed from your history. This action cannot be undone."
+            confirmLabel="Delete call"
+            destructive
+            onConfirm={handleConfirmDeleteCall}
+            onCancel={handleCancelDeleteCall}
+          />
+
+          <ConfirmationModal
+            isOpen={isClearCallHistoryOpen}
+            title="Clear call history?"
+            description="This will permanently remove all call records from your history. This action cannot be undone."
+            confirmLabel="Clear history"
+            destructive
+            onConfirm={handleClearCallHistory}
+            onCancel={handleCancelClearCallHistory}
+          />
 
         <ConfirmationModal
           isOpen={isLeaveGroupConfirmationOpen}

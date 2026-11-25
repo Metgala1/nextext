@@ -31,7 +31,9 @@ type ChatHeaderProps = {
   isGroupMuted: boolean;
   onToggleGroupMute: () => void;
   onViewPinnedMessages: () => void;
-  
+  onStartVoiceCall: () => void;
+  onStartVideoCall: () => void;
+ 
 };
 
 export default function ChatHeader({
@@ -55,6 +57,8 @@ export default function ChatHeader({
   isGroupMuted,
   onToggleGroupMute,
   onViewPinnedMessages,
+  onStartVideoCall,
+  onStartVoiceCall
   
 }: ChatHeaderProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -135,6 +139,7 @@ export default function ChatHeader({
       {/* Header actions */}
       <div className="flex shrink-0 items-center gap-1">
         <button
+          onClick={onStartVoiceCall}
           type="button"
           aria-label="Start voice call"
           title="Voice call"
@@ -144,8 +149,9 @@ export default function ChatHeader({
         </button>
 
         <button
+          onClick={onStartVideoCall}
           type="button"
-          aria-label="Start video call"
+          aria-label="Start video call" 
           title="Video call"
           className="flex size-10 items-center justify-center rounded-default text-text-secondary transition-colors hover:bg-surface-elevated hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >

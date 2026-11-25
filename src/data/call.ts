@@ -1,11 +1,13 @@
 export type CallType = "voice" | "video";
 
+export type CallDirection = "incoming" | "outgoing";
+
 export type CallStatus =
-  | "incoming"
-  | "outgoing"
+  | "ringing"
+  | "active"
+  | "completed"
   | "missed"
-  | "declined"
-  | "completed";
+  | "declined";
 
 export type CallRecord = {
   id: string;
@@ -14,6 +16,7 @@ export type CallRecord = {
   participantName: string;
   participantInitials: string;
   type: CallType;
+  direction: CallDirection;
   status: CallStatus;
   startedAt: string;
   endedAt?: string;

@@ -9,6 +9,7 @@ import {
   CircleDashed,
   Star,
   RadioTower,
+  Phone,
   type LucideIcon,
 } from "lucide-react";
 
@@ -27,6 +28,7 @@ type NavigationItem = {
 const navigationItems: NavigationItem[] = [
   { label: "Messages", icon: MessageSquare },
   { label: "Contacts", icon: Users },
+  { label: "Calls", icon: Phone},
   { label: "Group", icon: UserGroup },
   { label: "Broadcast", icon: RadioTower },
   { label: "Status", icon: CircleDashed },
