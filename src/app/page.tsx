@@ -77,6 +77,7 @@ import { removeExpiredStatuses } from "@/lib/status-utils";
 import IncomingCallScreen from "@/components/incoming-call-screen";
 import CallDetailsScreen from "@/components/call-details-screen";
 import ContactsScreen from "@/components/contacts-screen";
+import SettingsScreen from "@/components/settings-screen";
 
 import { CURRENT_USER, CURRENT_USER_ID } from "@/data/users";
 
@@ -1971,6 +1972,8 @@ useEffect(() => {
               }}
             />
           </div>
+        ) :  activeNavigationItem === "Settings" ? (
+          <SettingsScreen />
         ) : (
           <>
             <ConversationList
