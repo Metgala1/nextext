@@ -1,8 +1,8 @@
 import uuid
-
 from datetime import datetime
 
 from sqlalchemy import (
+    CheckConstraint,
     DateTime,
     Integer,
     String,
@@ -12,7 +12,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
-from sqlalchemy import CheckConstraint
+
 
 class PhoneVerification(Base):
     __tablename__ = "phone_verifications"

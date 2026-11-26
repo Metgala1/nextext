@@ -1,13 +1,12 @@
 import uuid
-
 from datetime import datetime
 
 from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
-    Uuid,
     UniqueConstraint,
+    Uuid,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
