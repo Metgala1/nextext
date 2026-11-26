@@ -1,6 +1,28 @@
 from app.core.config import settings
 from app.db.base import Base
-from app.models import User, PhoneVerification
+from app.models import (
+    BroadcastList,
+    BroadcastRecipient,
+    BroadcastMessage,
+    Call,
+    CallParticipant,
+    Contact,
+    Conversation,
+    ConversationMember,
+    Message,
+    MessageAttachment,
+    MessageReaction,
+    MessageReceipt,
+    PhoneVerification,
+    StarredMessage,
+    StatusUpdate,
+    StatusAudience,
+    StatusReply,
+    StatusView,
+    Session,
+    User,
+    UserBlock
+)
 
 from logging.config import fileConfig
 
